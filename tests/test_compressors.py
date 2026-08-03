@@ -19,6 +19,7 @@ from app.core.entities import (
     FileItem,
     FileKind,
     HistoryEntry,
+    JobStatus,
 )
 from app.core.use_cases import CompressUseCase, resolve_output_path
 from app.core.ports import CompressError
@@ -158,6 +159,72 @@ class TestPdfCompressor:
         bogus.write_bytes(b"%PDF-1.4 garbage not a real pdf")
         with pytest.raises(CompressError):
             PdfCompressor().compress(str(bogus), str(tmp_path / "o.pdf"), CompressionOptions())
+
+
+# --------------------------------------------------------------------- #
+# Max-size target (max_size_mb)
+# --------------------------------------------------------------------- #
+class TestTargetSize:
+    def test_target_bytes_property(self):
+        assert CompressionOptions(max_size_mb=5).target_bytes == 5 * 1024 * 1024
+        assert CompressionOptions().target_bytes is None
+        assert CompressionOptions(max_size_mb=0).target_bytes is None
+        assert CompressionOptions(max_size_mb=-2).target_bytes is None
+
+    def test_image_meets_target(self, sample_image: Path, tmp_path: Path):
+        out = tmp_path / "out.jpg"
+        target = int(sample_image.stat().st_size * 0.3)  # single pass won't reach this
+        opts = CompressionOptions(max_size_mb=target / (1024 * 1024))
+        stats = ImageCompressor().compress(str(sample_image), str(out), opts)
+        assert stats.compressed_size <= target
+        assert out.exists()
+
+    def test_image_best_effort_no_leftovers(self, sample_image: Path, tmp_path: Path):
+        out = tmp_path / "out.jpg"
+        opts = CompressionOptions(max_size_mb=0.0001)  # impossible budget
+        stats = ImageCompressor().compress(str(sample_image), str(out), opts)
+        assert stats.compressed_size < sample_image.stat().st_size  # still a win
+        leftovers = [p for p in tmp_path.iterdir() if ".q" in p.name]
+        assert leftovers == []  # ladder temp files cleaned up
+
+    def test_pdf_meets_target(self, sample_pdf: Path, tmp_path: Path):
+        out = tmp_path / "out.pdf"
+        target = int(sample_pdf.stat().st_size * 0.35)
+        opts = CompressionOptions(max_size_mb=target / (1024 * 1024))
+        stats = PdfCompressor().compress(str(sample_pdf), str(out), opts)
+        assert stats.compressed_size <= target
+        assert out.exists()
+        assert not [p for p in tmp_path.iterdir() if ".q" in p.name]
+
+    def test_pdf_target_still_readable(self, sample_pdf: Path, tmp_path: Path):
+        import fitz
+
+        out = tmp_path / "out.pdf"
+        opts = CompressionOptions(max_size_mb=0.5)
+        PdfCompressor().compress(str(sample_pdf), str(out), opts)
+        with fitz.open(str(out)) as doc:
+            assert doc.page_count == 3
+            assert doc.load_page(0).get_text().strip() == "Compresstor test document"
+
+    def test_target_not_smaller_than_original_fails(self, tmp_path: Path):
+        # Core enforcement: a target at/above the original size is an error.
+        registry = CompressorRegistry()
+        use_case = CompressUseCase(registry)
+        item = FileItem(path=str(tmp_path / "big.pdf"), kind=FileKind.PDF, size=10 * 1024 * 1024)
+        results = use_case.run([item], CompressionOptions(max_size_mb=10))
+        assert results[0].status == JobStatus.FAILED
+        assert "not smaller" in results[0].error
+
+    def test_target_met_through_use_case(self, sample_image: Path, tmp_path: Path):
+        from app.core.entities import FileItem as FI
+
+        registry = CompressorRegistry()
+        use_case = CompressUseCase(registry)
+        target = int(sample_image.stat().st_size * 0.3)
+        item = FI.from_path(sample_image)
+        results = use_case.run([item], CompressionOptions(max_size_mb=target / (1024 * 1024)))
+        assert results[0].status == JobStatus.DONE
+        assert results[0].compressed_size <= target
 
 
 # --------------------------------------------------------------------- #

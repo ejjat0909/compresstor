@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
@@ -33,13 +34,12 @@ from app.presentation.components.dropdown import Dropdown, FieldLabel
 from app.presentation.components.filetable import Column, FileTable
 from app.presentation.components.icons import IconLabel
 from app.presentation.components.inputs import Input
-from app.presentation.components.modal import confirm
+from app.presentation.components.modal import ModalCard, ModalOverlay, confirm
 from app.presentation.components.progress import ProgressBar
 from app.presentation.components.switch import Switch
 from app.presentation.components.tooltip import attach_tooltip
 from app.presentation.components.typography import (
     CaptionText,
-    MutedText,
     NormalText,
     SecondaryText,
     SectionTitle,
@@ -113,6 +113,10 @@ class DashboardPage(QWidget):
         super().__init__(parent)
         self.controller = controller
         self._status_by_path: dict[str, JobStatus] = {}
+        self._results: list[JobResult] = []
+        self._modal_overlay = None
+        self._modal_card = None
+        self._run_options = None
         self._current_file: str | None = None
         self._build()
         self._refresh_queue()
@@ -184,28 +188,6 @@ class DashboardPage(QWidget):
         bulk.addWidget(self._remove_selected_btn)
         queue_layout.addLayout(bulk)
 
-        # progress section inside the queue card
-        self._progress_card = QFrame()
-        self._progress_card.setProperty("ui", "cardSubtle")
-        progress_layout = QVBoxLayout(self._progress_card)
-        progress_layout.setContentsMargins(14, 12, 14, 12)
-        progress_layout.setSpacing(8)
-        progress_head = QHBoxLayout()
-        self._progress_label = MutedText("Ready")
-        progress_head.addWidget(self._progress_label)
-        progress_head.addStretch(1)
-        self._progress_pct = CaptionText("")
-        progress_head.addWidget(self._progress_pct)
-        progress_layout.addLayout(progress_head)
-        self._progress_bar = ProgressBar()
-        progress_layout.addWidget(self._progress_bar)
-        # summary row (hidden until a run finishes)
-        self._summary_row = QHBoxLayout()
-        self._summary_row.setSpacing(8)
-        progress_layout.addLayout(self._summary_row)
-        self._progress_card.setVisible(False)
-        queue_layout.addWidget(self._progress_card)
-
         columns.addWidget(queue_card, 3)
 
         # right: settings card
@@ -253,6 +235,15 @@ class DashboardPage(QWidget):
         self._suffix_row.addWidget(FieldLabel("Suffix", self._suffix_input))
         layout.addLayout(self._suffix_row)
 
+        self._maxsize_row = QHBoxLayout()
+        self._maxsize_row.setSpacing(8)
+        self._maxsize_input = Input("Optional — e.g. 5")
+        self._maxsize_input.setValidator(QDoubleValidator(0.01, 100000.0, 2, self._maxsize_input))
+        self._maxsize_row.addWidget(FieldLabel("Max size (MB)", self._maxsize_input))
+        layout.addLayout(self._maxsize_row)
+        maxsize_hint = CaptionText("Compressed files will be this size or below. Leave empty for automatic.")
+        layout.addWidget(maxsize_hint)
+
         self._folder_row = QHBoxLayout()
         self._folder_row.setSpacing(8)
         self._folder_input = Input("Choose output folder…")
@@ -288,10 +279,6 @@ class DashboardPage(QWidget):
         self._compress_btn = Button("Compress Files", ButtonVariant.PRIMARY, ButtonSize.LG, icon="zap", icon_size=16)
         self._compress_btn.clicked.connect(self._on_compress)
         layout.addWidget(self._compress_btn)
-        self._cancel_btn = Button("Cancel", ButtonVariant.OUTLINE, ButtonSize.LG, icon="x", icon_size=15)
-        self._cancel_btn.clicked.connect(self._on_cancel)
-        self._cancel_btn.setVisible(False)
-        layout.addWidget(self._cancel_btn)
 
         layout.addStretch(1)
 
@@ -472,6 +459,31 @@ class DashboardPage(QWidget):
         options.image.strip_metadata = self._strip_meta.isChecked()
         options.image.preserve_format = self._keep_format.isChecked()
 
+        # max-size target: parse input and reject targets that are not
+        # strictly smaller than the original file.
+        window = self.window()
+        raw = self._maxsize_input.text().strip()
+        if raw:
+            try:
+                mb = float(raw)
+                if mb <= 0:
+                    raise ValueError
+                options.max_size_mb = mb
+            except ValueError:
+                window.toasts.error("Invalid target size", "Enter a valid max size in MB (e.g. 5).")
+                return
+            target = options.target_bytes
+            offenders = [i for i in items if i.size <= target]
+            if offenders:
+                names = ", ".join(f"{Path(i.path).name} ({format_size(i.size)})" for i in offenders[:3])
+                if len(offenders) > 3:
+                    names += f" and {len(offenders) - 3} more"
+                window.toasts.error(
+                    "Target size is not smaller",
+                    f"{names} — set the max size below the original file size.",
+                )
+                return
+
         def proceed():
             self._start(items, options)
 
@@ -490,81 +502,167 @@ class DashboardPage(QWidget):
     def _start(self, items: list[FileItem], options) -> None:
         self._status_by_path = {item.path: JobStatus.RUNNING for item in items}
         self._results: list[JobResult] = []
-        self._progress_card.setVisible(True)
-        self._progress_bar.set_progress(0)
-        self._progress_label.setText(f"Compressing {len(items)} file(s)…")
-        self._clear_summary()
+        self._run_options = options
         self._compress_btn.setVisible(False)
-        self._cancel_btn.setVisible(True)
         self._clear_btn.setEnabled(False)
         self._upload.setEnabled(False)
+        self._open_progress_modal(len(items))
 
         self.controller.progress_updated.connect(self._on_progress)
         self.controller.compression_finished.connect(self._on_finished)
         self.controller.start_compression(items, options)
         self._refresh_queue()
 
+    # ------------------------------------------------------------------ #
+    # compression progress modal
+    # ------------------------------------------------------------------ #
+    def _open_progress_modal(self, count: int) -> None:
+        overlay = ModalOverlay(self.window(), dismissible=False)
+        card = ModalCard(overlay)
+        lay = card.body()
+        lay.addWidget(SectionTitle("Compressing files"))
+        self._modal_file = NormalText(f"0 of {count} files")
+        self._modal_file.setWordWrap(True)
+        lay.addWidget(self._modal_file)
+        self._modal_bar = ProgressBar()
+        lay.addWidget(self._modal_bar)
+        row = QHBoxLayout()
+        row.setSpacing(8)
+        self._modal_pct = CaptionText("0%")
+        row.addWidget(self._modal_pct)
+        row.addStretch(1)
+        self._modal_cancel = Button("Cancel", ButtonVariant.OUTLINE, ButtonSize.SM, icon="x", icon_size=13)
+        self._modal_cancel.clicked.connect(self._on_cancel)
+        row.addWidget(self._modal_cancel)
+        lay.addLayout(row)
+        overlay.open_card(card, width=480)
+        self._modal_overlay = overlay
+        self._modal_card = card
+
+    def _close_progress_modal(self) -> None:
+        overlay = self._modal_overlay
+        self._modal_overlay = None
+        self._modal_card = None
+        if overlay is not None:
+            overlay.close_modal()
+            overlay.deleteLater()
+
     def _on_cancel(self) -> None:
         self.controller.cancel_compression()
-        self._progress_label.setText("Cancelling…")
+        if self._modal_cancel is not None:
+            self._modal_cancel.setEnabled(False)
+        if self._modal_file is not None:
+            self._modal_file.setText("Cancelling…")
 
     def _on_progress(self, fraction: float, message: str) -> None:
-        self._progress_bar.set_progress(fraction)
-        self._progress_pct.setText(f"{int(fraction * 100)}%")
-        self._progress_label.setText(message)
+        if self._modal_overlay is None:
+            return
+        self._modal_bar.set_progress(fraction)
+        self._modal_pct.setText(f"{int(fraction * 100)}%")
+        self._modal_file.setText(message)
 
     def _on_finished(self, results: list[JobResult]) -> None:
         self._results = results
         for result in results:
             self._status_by_path[result.item.path] = result.status
         self._refresh_queue()
-        self._show_summary(results)
         self._compress_btn.setVisible(True)
-        self._cancel_btn.setVisible(False)
         self._clear_btn.setEnabled(True)
         self._upload.setEnabled(True)
         self.history_changed.emit()
 
         window = self.window()
-        if not hasattr(window, "toasts"):
+        if hasattr(window, "toasts"):
+            done = [r for r in results if r.status == JobStatus.DONE]
+            failed = [r for r in results if r.status == JobStatus.FAILED]
+            skipped = [r for r in results if r.status == JobStatus.SKIPPED]
+            if done:
+                saved = sum(r.original_size - r.compressed_size for r in done)
+                pct = sum(r.savings_percent for r in done) / len(done)
+                window.toasts.success(
+                    "Compression complete",
+                    f"{len(done)} file(s) compressed · {format_size(saved)} saved · {pct:.0f}% smaller on average.",
+                )
+            if failed:
+                window.toasts.error("Some files failed", f"{len(failed)} file(s) could not be compressed.")
+            if skipped:
+                window.toasts.info("Files skipped", f"{len(skipped)} file(s) were already optimized.")
+
+        self._show_modal_summary(results)
+
+    def _show_modal_summary(self, results: list[JobResult]) -> None:
+        if self._modal_overlay is None or self._modal_card is None:
             return
+        lay = self._modal_card.body()
+        while lay.count():
+            item = lay.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
         done = [r for r in results if r.status == JobStatus.DONE]
         failed = [r for r in results if r.status == JobStatus.FAILED]
         skipped = [r for r in results if r.status == JobStatus.SKIPPED]
-        if done:
-            saved = sum(r.original_size - r.compressed_size for r in done)
-            pct = sum(r.savings_percent for r in done) / len(done)
-            window.toasts.success(
-                "Compression complete",
-                f"{len(done)} file(s) compressed · {format_size(saved)} saved · {pct:.0f}% smaller on average.",
-            )
-        if failed:
-            window.toasts.error("Some files failed", f"{len(failed)} file(s) could not be compressed.")
-        if skipped:
-            window.toasts.info("Files skipped", f"{len(skipped)} file(s) were already optimized.")
+        palette = active_theme().palette
 
-    def _show_summary(self, results: list[JobResult]) -> None:
-        # clear old summary widgets
-        while self._summary_row.count():
-            item = self._summary_row.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        done = [r for r in results if r.status == JobStatus.DONE]
+        head = QHBoxLayout()
+        head.setSpacing(10)
+        if done:
+            head.addWidget(IconLabel("circle-check", size=26, color=palette.success))
+            title = "Compression complete"
+        elif failed:
+            head.addWidget(IconLabel("x", size=24, color=palette.danger))
+            title = "Compression failed"
+        else:
+            head.addWidget(IconLabel("info", size=26))
+            title = "Nothing to do"
+        head.addWidget(SectionTitle(title))
+        head.addStretch(1)
+        lay.addLayout(head)
+
         if done:
             saved = sum(r.original_size - r.compressed_size for r in done)
             avg = sum(r.savings_percent for r in done) / len(done)
-            self._summary_row.addWidget(Badge(f"{format_size(saved)} saved", BadgeVariant.SUCCESS, "trending-down"))
-            self._summary_row.addWidget(Badge(f"{avg:.0f}% smaller", BadgeVariant.INFO, "percent"))
-        failed = sum(1 for r in results if r.status == JobStatus.FAILED)
-        if failed:
-            self._summary_row.addWidget(Badge(f"{failed} failed", BadgeVariant.DANGER, "alert-circle"))
-        self._summary_row.addStretch(1)
+            lay.addWidget(
+                NormalText(
+                    f"{len(done)} file(s) compressed · {format_size(saved)} saved · "
+                    f"{avg:.0f}% smaller on average."
+                )
+            )
+            badges = QHBoxLayout()
+            badges.setSpacing(8)
+            badges.addWidget(Badge(f"{format_size(saved)} saved", BadgeVariant.SUCCESS, "trending-down"))
+            badges.addWidget(Badge(f"{avg:.0f}% smaller", BadgeVariant.INFO, "percent"))
+            if failed:
+                badges.addWidget(Badge(f"{len(failed)} failed", BadgeVariant.DANGER, "x"))
+            if skipped:
+                badges.addWidget(Badge(f"{len(skipped)} skipped", BadgeVariant.WARNING, "info"))
+            badges.addStretch(1)
+            lay.addLayout(badges)
+        elif failed:
+            lay.addWidget(NormalText(f"{len(failed)} file(s) could not be compressed."))
+        elif skipped:
+            lay.addWidget(NormalText(f"{len(skipped)} file(s) were already optimized."))
 
-    def _clear_summary(self) -> None:
-        while self._summary_row.count():
-            item = self._summary_row.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        # Best-effort note when a max-size target could not be reached.
+        target = self._run_options.target_bytes if self._run_options else None
+        if target:
+            over = [r for r in done if r.compressed_size > target]
+            if over:
+                names = ", ".join(Path(r.item.path).name for r in over[:2])
+                if len(over) > 2:
+                    names += f" and {len(over) - 2} more"
+                lay.addWidget(CaptionText(f"Best effort: {names} could not reach the target size."))
+
+        actions = QHBoxLayout()
+        actions.setSpacing(8)
+        actions.addStretch(1)
+        done_btn = Button("Done", ButtonVariant.PRIMARY, ButtonSize.SM)
+        done_btn.clicked.connect(self._close_progress_modal)
+        actions.addWidget(done_btn)
+        lay.addLayout(actions)
+
+        self._modal_overlay._place_card()  # re-center after the card resized
 
     # ------------------------------------------------------------------ #
     # queue rendering
@@ -600,8 +698,8 @@ class DashboardPage(QWidget):
     @staticmethod
     def _status_icon(status: JobStatus) -> str | None:
         return {
-            JobStatus.DONE: "check",
-            JobStatus.FAILED: "alert-circle",
+            JobStatus.DONE: "circle-check",
+            JobStatus.FAILED: "x",
             JobStatus.SKIPPED: "info",
             JobStatus.RUNNING: "refresh-cw",
         }.get(status)

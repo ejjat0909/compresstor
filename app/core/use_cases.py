@@ -94,6 +94,19 @@ class CompressUseCase:
         total: int,
         progress: Optional[ProgressCallback],
     ) -> JobResult:
+        # Max-size target must be strictly below the original size.
+        target = options.target_bytes
+        if target is not None and item.size <= target:
+            return JobResult(
+                item=item,
+                status=JobStatus.FAILED,
+                original_size=item.size,
+                error=(
+                    f"Target size {options.max_size_mb:g} MB is not smaller than the "
+                    f"original ({_fmt_mb(item.size)})"
+                ),
+            )
+
         compressor = self._factory.get_compressor(item.kind)
         if compressor is None:
             return JobResult(
@@ -161,6 +174,15 @@ def _safe_unlink(path: str) -> None:
         Path(path).unlink(missing_ok=True)
     except OSError:
         pass
+
+
+def _fmt_mb(num_bytes: int) -> str:
+    mb = num_bytes / (1024 * 1024)
+    if mb >= 100:
+        return f"{mb:.0f} MB"
+    if mb >= 10:
+        return f"{mb:.1f} MB"
+    return f"{mb:.2f} MB"
 
 
 class HistoryUseCase:

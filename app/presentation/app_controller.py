@@ -55,6 +55,7 @@ class AppController(QObject):
 
     progress_updated = Signal(float, str)   # overall fraction, message
     compression_finished = Signal(list)     # list[JobResult]
+    _run_requested = Signal(list, object)   # queues CompressWorker.run into its thread
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -74,6 +75,9 @@ class AppController(QObject):
         self._worker = CompressWorker(self.compress_uc)
         self._worker.moveToThread(self._thread)
         self._thread.start()
+        # invoke run() via a signal so it executes on the worker thread;
+        # a direct call would block the main thread (frozen UI + dead modal).
+        self._run_requested.connect(self._worker.run)
 
     # ------------------------------------------------------------------ #
     # Queue management
@@ -122,7 +126,7 @@ class AppController(QObject):
         self.running = True
         self._worker.progress.connect(self._on_progress)
         self._worker.finished.connect(self._on_finished)
-        self._worker.run(items, options)
+        self._run_requested.emit(items, options)
 
     def cancel_compression(self) -> None:
         self._worker.cancel()

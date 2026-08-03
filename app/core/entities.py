@@ -114,6 +114,7 @@ class CompressionOptions:
     output_mode: OutputMode = OutputMode.SAME_DIR_SUFFIX
     output_dir: str = ""
     suffix: str = "_compressed"
+    max_size_mb: float | None = None  # optional target: output must be <= this size
     pdf: PdfOptions | None = None
     image: ImageOptions | None = None
 
@@ -121,6 +122,13 @@ class CompressionOptions:
         preset = _LEVEL_PRESETS[self.level]
         self.pdf = self.pdf or preset[0]
         self.image = self.image or preset[1]
+
+    @property
+    def target_bytes(self) -> int | None:
+        """Byte budget for the max-size target, or None when not set."""
+        if self.max_size_mb is None or self.max_size_mb <= 0:
+            return None
+        return int(self.max_size_mb * 1024 * 1024)
 
 
 _LEVEL_PRESETS: dict[CompressionLevel, tuple[PdfOptions, ImageOptions]] = {

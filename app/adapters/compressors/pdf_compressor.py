@@ -14,6 +14,7 @@ import io
 import logging
 from pathlib import Path
 
+from app.adapters.compressors.target import compress_to_target
 from app.core.entities import CompressionOptions, CompressStats, PdfOptions
 from app.core.ports import CompressError, Compressor
 
@@ -50,12 +51,34 @@ class PdfCompressor(Compressor):
         try:
             if doc.needs_pass:
                 raise CompressError("PDF is password protected — unlock it first")
-            return self._compress_doc(doc, src, dst, opts, progress)
+            if options.target_bytes is None:
+                return self._compress_doc(doc, src, dst, opts, opts.image_quality, progress)
+
+            # Max-size target: re-encode the document at progressively lower
+            # image quality until the output fits the budget.
+            original_size = _file_size(src)
+            steps = [opts.image_quality, 55, 40, 30, 20]
+
+            def run_step(quality, tmp: str) -> CompressStats:
+                # Per-image progress is suppressed on ladder passes; the
+                # ladder runner reports overall progress instead.
+                return self._compress_doc(doc, src, tmp, opts, quality, None)
+
+            return compress_to_target(
+                run_step,
+                dst,
+                options.target_bytes,
+                steps,
+                progress=progress,
+                progress_start=0.03,
+                progress_span=0.9,
+                label="Optimizing PDF",
+            )
         finally:
             doc.close()
 
     # ------------------------------------------------------------------ #
-    def _compress_doc(self, doc, src: str, dst: str, opts: PdfOptions, progress):
+    def _compress_doc(self, doc, src: str, dst: str, opts: PdfOptions, quality: int, progress):
         original_size = _file_size(src)
         xrefs: list[int] = []
         for page in doc:
@@ -71,7 +94,7 @@ class PdfCompressor(Compressor):
             if progress:
                 progress(0.05 + 0.85 * idx / total, f"Optimizing image {idx + 1}/{len(xrefs)}…")
             try:
-                was_replaced, saved = self._recompress_image(doc, xref, opts)
+                was_replaced, saved = self._recompress_image(doc, xref, opts, quality)
             except Exception as exc:  # keep going on per-image failures
                 log.warning("Image xref %s failed: %s", xref, exc)
                 continue
@@ -103,7 +126,7 @@ class PdfCompressor(Compressor):
         return CompressStats(dst, original_size, compressed_size)
 
     # ------------------------------------------------------------------ #
-    def _recompress_image(self, doc, xref: int, opts: PdfOptions) -> tuple[bool, int]:
+    def _recompress_image(self, doc, xref: int, opts: PdfOptions, quality: int) -> tuple[bool, int]:
         """Re-encode one embedded image. Returns (was_replaced, bytes_saved)."""
         info = doc.extract_image(xref)
         raw = info["image"]
@@ -145,7 +168,7 @@ class PdfCompressor(Compressor):
             image = image.convert("RGB")
 
         buf = io.BytesIO()
-        image.save(buf, "JPEG", quality=opts.image_quality, optimize=True, progressive=True)
+        image.save(buf, "JPEG", quality=quality, optimize=True, progressive=True)
         new_data = buf.getvalue()
 
         if len(new_data) >= old_size:

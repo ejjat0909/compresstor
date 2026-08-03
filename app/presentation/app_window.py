@@ -48,9 +48,7 @@ class ThemeSegmented(QFrame):
 
     def _select(self, key: str) -> None:
         for k, btn in self._buttons.items():
-            btn.setProperty("ui", str(ButtonVariant.SECONDARY) if k == key else str(ButtonVariant.GHOST))
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
+            btn.set_variant(ButtonVariant.SECONDARY if k == key else ButtonVariant.GHOST)
         self.selected.emit(key)
 
     def set_selected(self, key: str) -> None:
