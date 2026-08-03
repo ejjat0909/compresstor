@@ -54,11 +54,14 @@ class Button(QPushButton):
 
     # ------------------------------------------------------------------ #
     def set_variant(self, variant: ButtonVariant | str) -> None:
-        self.setProperty("ui", str(variant if isinstance(variant, ButtonVariant) else variant))
+        value = variant.value if isinstance(variant, ButtonVariant) else variant
+        self.setProperty("ui", str(value))
         self._restyle()
 
     def set_size(self, size: ButtonSize | str) -> None:
-        self.setProperty("size", str(size if isinstance(size, ButtonSize) else size))
+        # NB: property named "bsize" — "size" collides with QWidget::size.
+        value = size.value if isinstance(size, ButtonSize) else size
+        self.setProperty("bsize", str(value))
         self._restyle()
 
     def set_icon(self, name: str | None, size: int | None = None) -> None:

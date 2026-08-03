@@ -289,10 +289,10 @@ QPushButton[ui="success"]:hover {{ background-color: {p.success}; }}
 QPushButton[ui="success"]:disabled {{ background-color: {hex_to_rgba(p.success, 0.35)}; }}
 
 /* sizes */
-QPushButton[size="sm"] {{ padding: 4px 10px; font-size: 11.5pt; border-radius: 6px; }}
-QPushButton[size="lg"] {{ padding: 10px 22px; font-size: 13pt; border-radius: 10px; }}
-QPushButton[size="icon"] {{ padding: 6px; border-radius: 8px; }}
-QPushButton[size="iconSm"] {{ padding: 4px; border-radius: 6px; }}
+QPushButton[bsize="sm"] {{ padding: 4px 10px; font-size: 11.5pt; border-radius: 6px; }}
+QPushButton[bsize="lg"] {{ padding: 10px 22px; font-size: 13pt; border-radius: 10px; }}
+QPushButton[bsize="icon"] {{ padding: 6px; border-radius: 8px; }}
+QPushButton[bsize="iconSm"] {{ padding: 4px; border-radius: 6px; }}
 
 /* ============================ inputs ============================ */
 QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox {{

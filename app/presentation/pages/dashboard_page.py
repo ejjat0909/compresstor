@@ -585,7 +585,7 @@ class DashboardPage(QWidget):
             "type": {"kind": "badge", "text": "PDF" if item.kind == FileKind.PDF else "Image", "variant": kind_badge},
             "size": {"kind": "text", "text": format_size(item.size), "sort": item.size},
             "status": {"kind": "badge", "text": status_cell, "variant": status_variant, "icon": self._status_icon(status)},
-            "actions": {"kind": "button", "icon": "x", "tooltip": "Remove", "callback": lambda p=item.path: self._remove_by_path(p)},
+            "actions": {"kind": "button", "icon": "x", "tooltip": "Remove", "callback": lambda _=False, p=item.path: self._remove_by_path(p)},
         }
 
     def _status_cell(self, status: JobStatus) -> tuple[str, str]:
