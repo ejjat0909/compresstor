@@ -2,12 +2,19 @@
 
 **Requirements:** macOS 12.0 or newer (Intel or Apple Silicon).
 
-## Install
+## Install (drag & drop)
 
-1. Copy `Compresstor.app` to your Applications folder (or anywhere you like).
-2. First launch: right-click the app → **Open**, then confirm in
+Prefer the disk image: `Compresstor-1.0.0.dmg`
+
+1. Open the `.dmg` (double-click) — a Finder window shows the app
+   over a dark background.
+2. Drag `Compresstor.app` onto the `Applications` folder shortcut.
+3. First launch: right-click the app → **Open**, then confirm in
    System Settings → Privacy & Security → "Open Anyway".
    (The app is unsigned — this is normal for locally built software.)
+
+Alternative: copy `Compresstor.app` to your Applications folder
+(or anywhere you like) and follow step 3.
 
 ## Usage
 
@@ -30,6 +37,10 @@ Delete that folder to reset everything.
 See the project README (`scripts/build_macos.sh`). Build a universal2 binary:
 
     ./scripts/build_macos.sh
+
+Package it into a distributable `.dmg` (drag-to-Applications installer):
+
+    bash scripts/build_dmg.sh [version]   # → release/MacOS/Compresstor-<version>.dmg
 
 ## Troubleshooting
 

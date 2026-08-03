@@ -78,6 +78,7 @@ macOS (build on a Mac, produces a universal2 .app for Intel + Apple Silicon):
 
 ```bash
 ./scripts/build_macos.sh
+bash scripts/build_dmg.sh      # optional: package the .app into a .dmg installer
 ```
 
 Windows (run on Windows 10/11):
@@ -86,7 +87,8 @@ Windows (run on Windows 10/11):
 scripts\build_windows.bat
 ```
 
-Artifacts land in `release/MacOS/` and `release/Windows/`.
+Artifacts land in `release/MacOS/` (`.app` and `Compresstor-<version>.dmg`)
+and `release/Windows/`.
 
 > The macOS bundle is unsigned, so first launch requires
 > right-click → Open (or System Settings → Privacy & Security → Open Anyway).
