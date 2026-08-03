@@ -18,6 +18,9 @@ collapsible sidebar, dark mode, toast notifications and subtle animations.
   quantization, resizing, metadata stripping, BMP→PNG and format conversion.
 - **Presets** — High / Balanced / Maximum, plus an advanced panel with
   sliders for PDF quality, max DPI, image quality and max dimension.
+- **Max size target** — set a size in MB and the output is compressed to
+  that size or below (iterative quality/resolution ladder; errors when the
+  target is not smaller than the original file).
 - **Output modes** — new file next to the original, chosen folder, or
   replace in place (with confirmation).
 - **Filament-style table** — sorting, search, filtering, pagination,
