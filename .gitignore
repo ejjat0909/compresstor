@@ -14,7 +14,9 @@ Thumbs.db
 *.spec.bak
 
 # Built release artifacts (regenerate via scripts/build_*.sh|bat)
-# The macOS universal2 bundle IS tracked by request — rebuilds get committed.
+# The .app is large (262M) and NOT committed — the .dmg installer is the
+# tracked, distributable artifact (build_macos.sh + build_dmg.sh rebuild both).
+/release/MacOS/Compresstor.app/
 /release/Windows/Compresstor/
 
 # QA / local data
