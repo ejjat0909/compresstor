@@ -14,7 +14,7 @@ Thumbs.db
 *.spec.bak
 
 # Built release artifacts (regenerate via scripts/build_*.sh|bat)
-/release/MacOS/Compresstor.app/
+# The macOS universal2 bundle IS tracked by request — rebuilds get committed.
 /release/Windows/Compresstor/
 
 # QA / local data
