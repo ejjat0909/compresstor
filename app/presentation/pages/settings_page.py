@@ -104,16 +104,6 @@ class SettingsPage(QWidget):
         appearance = Card("Appearance")
         ap = appearance.body()
 
-        ap.addWidget(CaptionText("THEME"))
-        theme_row = QHBoxLayout()
-        theme_row.setSpacing(8)
-        self._theme_dropdown = Dropdown()
-        self._theme_dropdown.add_options([("system", "System"), ("light", "Light"), ("dark", "Dark")])
-        self._theme_dropdown.currentIndexChanged.connect(self._on_theme_changed)
-        theme_row.addWidget(self._theme_dropdown, 1)
-        ap.addLayout(theme_row)
-
-        ap.addSpacing(6)
         ap.addWidget(CaptionText("ACCENT COLOR"))
         swatch_row = QHBoxLayout()
         swatch_row.setSpacing(8)
@@ -214,7 +204,6 @@ class SettingsPage(QWidget):
 
     # ------------------------------------------------------------------ #
     def _load(self, s: AppSettings) -> None:
-        self._theme_dropdown.set_value(s.theme)
         self._level_dropdown.set_value(s.default_level)
         self._mode_dropdown.set_value(s.output_mode)
         self._folder_input.setText(s.output_dir)
@@ -231,12 +220,6 @@ class SettingsPage(QWidget):
         self._current_accent = color
 
     # ------------------------------------------------------------------ #
-    def _on_theme_changed(self) -> None:
-        key = self._theme_dropdown.current_value() or "system"
-        theme = active_theme()
-        mode = theme.detect_system_mode() if key == "system" else key
-        theme.configure(mode=mode)
-
     def _on_accent_selected(self, color: str) -> None:
         self._mark_accent(color)
         active_theme().configure(accent=color)
@@ -256,8 +239,7 @@ class SettingsPage(QWidget):
     # ------------------------------------------------------------------ #
     def _collect(self) -> AppSettings:
         s = self.controller.settings
-        s.theme = self._theme_dropdown.current_value() or "system"
-        s.accent_color = getattr(self, "_current_accent", "#2563eb")
+        s.accent_color = getattr(self, "_current_accent", "#3b82f6")
         s.default_level = self._level_dropdown.current_value() or CompressionLevel.BALANCED.value
         s.output_mode = self._mode_dropdown.current_value() or OutputMode.SAME_DIR_SUFFIX.value
         s.output_dir = self._folder_input.text()
@@ -275,7 +257,7 @@ class SettingsPage(QWidget):
     def _on_reset(self) -> None:
         fresh = AppSettings()
         self.controller.save_settings(fresh)
-        active_theme().configure(mode=fresh.theme, accent=fresh.accent_color)
+        active_theme().configure(accent=fresh.accent_color)
         self._load(fresh)
         window = self.window()
         if hasattr(window, "toasts"):

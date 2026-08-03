@@ -223,8 +223,8 @@ class HistoryEntry:
 class AppSettings:
     """Persisted application settings (theme, defaults, behaviour)."""
 
-    theme: str = "system"              # system | light | dark
-    accent_color: str = "#2563eb"      # blue-600 default
+    theme: str = "dark"              # deprecated — dark-only since 2026-08; kept for settings-file compat
+    accent_color: str = "#3b82f6"    # blue-500 (dark-mode default)
     history_limit: int = 200
     default_level: str = "balanced"
     output_mode: str = "suffix"

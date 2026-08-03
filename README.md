@@ -26,8 +26,8 @@ collapsible sidebar, dark mode, toast notifications and subtle animations.
 - **Filament-style table** — sorting, search, filtering, pagination,
   multi-select, right-click context menu, status badges.
 - **History** — every job is stored locally with savings statistics.
-- **Theming** — light / dark / system detection, 8 accent colors or a
-  custom picker, Inter typography, 8px spacing system.
+- **Theming** — dark-only interface, 8 accent colors or a custom picker,
+  Inter typography, 8px spacing system.
 - **Fully offline** — your files never leave the device.
 
 ## Requirements

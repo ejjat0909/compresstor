@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFrame,
-    QGraphicsOpacityEffect,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -16,43 +15,10 @@ from PySide6.QtWidgets import (
 
 from app.presentation.app_controller import AppController
 from app.presentation.components.button import Button, ButtonSize, ButtonVariant
-from app.presentation.components.icons import IconLabel
 from app.presentation.components.toast import ToastManager
 from app.presentation.components.tooltip import attach_tooltip
 from app.presentation.theme.registry import active_theme
 from app.presentation.widgets.sidebar import Sidebar
-
-
-class ThemeSegmented(QFrame):
-    """System / Light / Dark segmented control in the header."""
-
-    selected = Signal(str)
-
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
-        self._buttons: dict[str, Button] = {}
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(2)
-        for key, icon, tip in (
-            ("system", "monitor", "Follow system theme"),
-            ("light", "sun", "Light mode"),
-            ("dark", "moon", "Dark mode"),
-        ):
-            btn = Button("", ButtonVariant.GHOST, ButtonSize.ICON_SM, icon=icon, icon_size=15)
-            attach_tooltip(btn, tip)
-            btn.clicked.connect(lambda _=False, k=key: self._select(k))
-            layout.addWidget(btn)
-            self._buttons[key] = btn
-        self.setProperty("ui", "cardSubtle")
-
-    def _select(self, key: str) -> None:
-        for k, btn in self._buttons.items():
-            btn.set_variant(ButtonVariant.SECONDARY if k == key else ButtonVariant.GHOST)
-        self.selected.emit(key)
-
-    def set_selected(self, key: str) -> None:
-        self._select(key)
 
 
 class MainWindow(QMainWindow):
@@ -68,11 +34,8 @@ class MainWindow(QMainWindow):
         self.toasts = ToastManager(self)
 
         theme = active_theme()
-        # initial theme from settings
-        s = controller.settings
-        mode = theme.detect_system_mode() if s.theme == "system" else s.theme
-        theme.configure(mode=mode, accent=s.accent_color)
-        self._theme_segmented.set_selected(s.theme)
+        # dark-only: apply the persisted accent color
+        theme.configure(accent=controller.settings.accent_color)
 
     # ------------------------------------------------------------------ #
     def _build(self) -> None:
@@ -115,10 +78,6 @@ class MainWindow(QMainWindow):
 
         layout.addStretch(1)
 
-        self._theme_segmented = ThemeSegmented()
-        self._theme_segmented.selected.connect(self._on_theme_selected)
-        layout.addWidget(self._theme_segmented)
-
         about = Button("", ButtonVariant.GHOST, ButtonSize.ICON, icon="info", icon_size=17)
         attach_tooltip(about, "About Compresstor")
         about.clicked.connect(self._show_about)
@@ -142,14 +101,6 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(widget)
 
     # ------------------------------------------------------------------ #
-    def _on_theme_selected(self, key: str) -> None:
-        theme = active_theme()
-        mode = theme.detect_system_mode() if key == "system" else key
-        theme.configure(mode=mode)
-        s = self.controller.settings
-        s.theme = key
-        self.controller.save_settings(s)
-
     def _show_about(self) -> None:
         self.toasts.info(
             "Compresstor 1.0.0",

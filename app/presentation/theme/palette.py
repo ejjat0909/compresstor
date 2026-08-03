@@ -1,12 +1,14 @@
-"""Color palette tokens (Tailwind-inspired) for light and dark themes.
+"""Color palette tokens (Tailwind-inspired) for the dark theme.
 
 Every color the UI needs lives here; QSS and custom painting read from
 these tokens so a single accent change re-themes the whole app.
+
+Compresstor is dark-only: the light palette was removed deliberately.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -53,48 +55,10 @@ class Palette:
     skeleton: str
     header: str
     sidebar: str
-    # dark-mode extras
+    # modal extras
     overlay: str = "rgba(0,0,0,0.45)"   # modal scrim
     backdrop: str = "rgba(0,0,0,0.28)"  # page backdrop
 
-
-LIGHT = Palette(
-    bg="#f8fafc",                  # slate-50
-    card="#ffffff",
-    card_hover="#fbfcfd",
-    input="#ffffff",
-    input_hover="#f8fafc",
-    border="#e2e8f0",              # slate-200
-    border_soft="#f1f5f9",         # slate-100
-    border_strong="#cbd5e1",       # slate-300
-    text="#0f172a",                # slate-900
-    text_secondary="#475569",      # slate-600
-    text_muted="#94a3b8",          # slate-400
-    text_inverse="#ffffff",
-    hover="rgba(15,23,42,0.05)",
-    active="rgba(15,23,42,0.08)",
-    accent="#2563eb",              # blue-600
-    accent_hover="#1d4ed8",        # blue-700
-    accent_active="#1e40af",       # blue-800
-    accent_soft="rgba(37,99,235,0.10)",
-    accent_foreground="#ffffff",
-    success="#059669",             # emerald-600
-    success_soft="rgba(5,150,105,0.10)",
-    warning="#d97706",             # amber-600 (amber-500 too light on white)
-    warning_soft="rgba(217,119,6,0.10)",
-    danger="#dc2626",              # red-600
-    danger_soft="rgba(220,38,38,0.10)",
-    danger_hover="#b91c1c",        # red-700
-    info="#0ea5e9",                # sky-500
-    info_soft="rgba(14,165,233,0.10)",
-    scrollbar="rgba(100,116,139,0.35)",
-    scrollbar_hover="rgba(100,116,139,0.55)",
-    selection="rgba(37,99,235,0.18)",
-    shadow="rgba(15,23,42,0.08)",
-    skeleton="rgba(148,163,184,0.18)",
-    header="#ffffff",
-    sidebar="#ffffff",
-)
 
 DARK = Palette(
     bg="#020617",                  # slate-950

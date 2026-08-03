@@ -16,28 +16,31 @@ from PySide6.QtGui import QColor, QIcon, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QApplication
 
-from app.presentation.theme.palette import DARK, LIGHT, Palette, hex_to_rgba
+from app.presentation.theme.palette import DARK, Palette, hex_to_rgba
 from app.resources import resource_path
 
 log = logging.getLogger(__name__)
 
 ASSET_DIR = resource_path("assets")
 
-MODE_LIGHT = "light"
 MODE_DARK = "dark"
 
 
 class ThemeManager(QObject):
-    """Owns the current palette and applies QSS to the application."""
+    """Owns the current palette and applies QSS to the application.
 
-    changed = Signal(str)  # emits the new mode ("light" | "dark")
+    Compresstor is dark-only: the light palette and theme switching were
+    removed, so ``configure`` only changes the accent color.
+    """
+
+    changed = Signal(str)  # emits the mode ("dark")
 
     def __init__(self, app: QApplication) -> None:
         super().__init__()
         self._app = app
-        self._mode = MODE_LIGHT
-        self._accent = "#2563eb"
-        self._palette: Palette = LIGHT
+        self._mode = MODE_DARK
+        self._accent = "#3b82f6"
+        self._palette: Palette = DARK
         self._icon_cache: dict[tuple[str, str, int], QIcon] = {}
         self._font_family = "Inter"
 
@@ -56,29 +59,19 @@ class ThemeManager(QObject):
 
     @property
     def is_dark(self) -> bool:
-        return self._mode == MODE_DARK
+        return True
 
     # ------------------------------------------------------------------ #
     def set_font_family(self, family: str) -> None:
         self._font_family = family
 
-    def configure(self, mode: str | None = None, accent: str | None = None) -> None:
-        if mode in (MODE_LIGHT, MODE_DARK):
-            self._mode = mode
+    def configure(self, accent: str | None = None) -> None:
         if accent and QColor(accent).isValid():
             self._accent = accent
         self._rebuild()
 
-    def detect_system_mode(self) -> str:
-        """Resolve the OS color scheme via Qt style hints."""
-        try:
-            scheme = self._app.styleHints().colorScheme()
-            return MODE_DARK if scheme == Qt.ColorScheme.Dark else MODE_LIGHT
-        except Exception:
-            return MODE_LIGHT
-
     def _rebuild(self) -> None:
-        base = DARK if self._mode == MODE_DARK else LIGHT
+        base = DARK
         self._palette = replace(base, accent=self._accent)
         self._icon_cache.clear()
         self._app.setStyle("Fusion")

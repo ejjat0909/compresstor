@@ -1,5 +1,5 @@
 """Visual QA harness: boots the app offscreen, runs a real compression,
-and captures PNG screenshots of every page in both themes.
+and captures PNG screenshots of every page in dark mode.
 
 Usage:  QT_QPA_PLATFORM=offscreen python scripts/qa_screenshot.py [out_dir]
 """
@@ -88,7 +88,7 @@ def main() -> int:
     theme = ThemeManager(app)
     set_active_theme(theme)
     theme.set_font_family(load_fonts())
-    theme.configure(mode="light", accent="#2563eb")
+    theme.configure(accent="#3b82f6")
 
     controller = AppController()
     window = MainWindow(controller)
@@ -109,41 +109,32 @@ def main() -> int:
     dashboard._on_files_dropped(samples)
     QTest.qWait(400)
 
-    window.grab().save(str(out_dir / "1-dashboard-light-empty.png"))
+    window.grab().save(str(out_dir / "1-dashboard-empty.png"))
 
     # ---- run a real compression through the UI ----------------------- #
     print("compressing…")
     dashboard._on_compress()
     spin_until(lambda: not controller.running, timeout_ms=120_000)
     QTest.qWait(500)
-    window.grab().save(str(out_dir / "2-dashboard-light-after.png"))
+    window.grab().save(str(out_dir / "2-dashboard-after.png"))  # summary modal visible
+    if dashboard._modal_overlay is not None:
+        dashboard._close_progress_modal()
+        QTest.qWait(400)
 
     # ---- history page -------------------------------------------------- #
     window.navigate("history")
     QTest.qWait(400)
-    window.grab().save(str(out_dir / "3-history-light.png"))
+    window.grab().save(str(out_dir / "3-history.png"))
 
     # ---- settings page ------------------------------------------------- #
     window.navigate("settings")
     QTest.qWait(400)
-    window.grab().save(str(out_dir / "4-settings-light.png"))
-
-    # ---- dark mode everywhere ------------------------------------------ #
-    theme.configure(mode="dark", accent="#2563eb")
-    QTest.qWait(400)
-    window.navigate("dashboard")
-    QTest.qWait(400)
-    window.grab().save(str(out_dir / "5-dashboard-dark-after.png"))
-    window.navigate("history")
-    QTest.qWait(400)
-    window.grab().save(str(out_dir / "6-history-dark.png"))
-    window.navigate("settings")
-    QTest.qWait(400)
-    window.grab().save(str(out_dir / "7-settings-dark.png"))
+    window.grab().save(str(out_dir / "4-settings.png"))
 
     # ---- toasts visible (success toast from compression should still be there) ---
+    window.navigate("dashboard")
     QTest.qWait(300)
-    window.grab().save(str(out_dir / "8-toasts.png"))
+    window.grab().save(str(out_dir / "5-toasts.png"))
 
     print("screenshots ->", out_dir)
     controller.shutdown()
