@@ -166,7 +166,7 @@ class SettingsPage(QWidget):
         suffix_row = QHBoxLayout()
         suffix_row.setSpacing(8)
         self._suffix_input = Input("suffix")
-        self._suffix_input.setText("-compressed")
+        self._suffix_input.setText("_compressed")
         suffix_row.addWidget(FieldLabel("Suffix", self._suffix_input))
         dp.addLayout(suffix_row)
 
@@ -218,7 +218,7 @@ class SettingsPage(QWidget):
         self._level_dropdown.set_value(s.default_level)
         self._mode_dropdown.set_value(s.output_mode)
         self._folder_input.setText(s.output_dir)
-        self._suffix_input.setText("-compressed")
+        self._suffix_input.setText("_compressed")
         self._history_switch.setChecked(s.add_to_history)
         self._confirm_switch.setChecked(s.overwrite_confirmation)
         self._history_limit.setValue(s.history_limit)

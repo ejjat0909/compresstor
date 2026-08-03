@@ -36,7 +36,7 @@ class CompressionLevel(str, Enum):
 
 
 class OutputMode(str, Enum):
-    SAME_DIR_SUFFIX = "suffix"    # original_dir / name-compressed.ext
+    SAME_DIR_SUFFIX = "suffix"    # original_dir / name_compressed.ext
     OUTPUT_DIR = "directory"      # chosen output dir, same file name
     OVERWRITE = "overwrite"       # replace the original file
 
@@ -113,7 +113,7 @@ class CompressionOptions:
     level: CompressionLevel = CompressionLevel.BALANCED
     output_mode: OutputMode = OutputMode.SAME_DIR_SUFFIX
     output_dir: str = ""
-    suffix: str = "-compressed"
+    suffix: str = "_compressed"
     pdf: PdfOptions | None = None
     image: ImageOptions | None = None
 

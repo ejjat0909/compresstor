@@ -189,7 +189,7 @@ class TestUseCase:
         src = tmp_path / "a.pdf"
         src.write_bytes(b"x")
         suffix_opts = CompressionOptions()
-        assert resolve_output_path(str(src), suffix_opts) == str(tmp_path / "a-compressed.pdf")
+        assert resolve_output_path(str(src), suffix_opts) == str(tmp_path / "a_compressed.pdf")
         dir_opts = CompressionOptions(output_mode="directory", output_dir=str(tmp_path / "out"))
         assert resolve_output_path(str(src), dir_opts) == str(tmp_path / "out" / "a.pdf")
         overwrite_opts = CompressionOptions(output_mode="overwrite")

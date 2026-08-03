@@ -249,7 +249,7 @@ class DashboardPage(QWidget):
         self._suffix_row = QHBoxLayout()
         self._suffix_row.setSpacing(8)
         self._suffix_input = Input("suffix")
-        self._suffix_input.setText("-compressed")
+        self._suffix_input.setText("_compressed")
         self._suffix_row.addWidget(FieldLabel("Suffix", self._suffix_input))
         layout.addLayout(self._suffix_row)
 
@@ -463,7 +463,7 @@ class DashboardPage(QWidget):
         mode = self._mode_dropdown.current_value() or OutputMode.SAME_DIR_SUFFIX.value
         options.output_mode = OutputMode(mode)
         options.output_dir = self._folder_input.text()
-        options.suffix = self._suffix_input.text().strip() or "-compressed"
+        options.suffix = self._suffix_input.text().strip() or "_compressed"
         # advanced overrides
         options.pdf.image_quality = self._pdf_quality.value()
         options.pdf.max_image_dpi = self._pdf_dpi.value()

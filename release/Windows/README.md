@@ -15,7 +15,7 @@ No installation wizard needed — the app is portable.
 1. Drag PDF / image files onto the upload area (or Browse Files).
 2. Pick a compression level and output mode.
 3. Click **Compress Files**.
-4. Compressed copies appear next to the originals (`name-compressed.ext`),
+4. Compressed copies appear next to the originals (`name_compressed.ext`),
    in your chosen folder, or replace the originals when "overwrite" is set.
 
 ## Data
