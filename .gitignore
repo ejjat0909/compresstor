@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PyInstaller
+*.spec.bak
+
+# Built release artifacts (regenerate via scripts/build_*.sh|bat)
+/release/MacOS/Compresstor.app/
+/release/Windows/Compresstor/
+
+# QA / local data
+/qa-*.png
+/tmp/
+
+# IDE
+.idea/
+.vscode/
