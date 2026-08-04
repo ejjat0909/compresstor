@@ -96,32 +96,51 @@ class UpdateClient {
     http.Client? httpClient,
     String? platform,
     this.repo = 'ejjat0909/compresstor',
+    String? baseUrl,
   })  : _http = httpClient ?? http.Client(),
-        platform = platform ?? defaultUpdatePlatform();
+        platform = platform ?? defaultUpdatePlatform(),
+        baseUrl = baseUrl ?? Platform.environment['COMPRESSTOR_UPDATE_BASE'];
 
   /// 'macos' on macOS, 'windows' on Windows, 'macos' elsewhere (tests/dev).
   static String defaultUpdatePlatform() =>
       Platform.operatingSystem == 'windows' ? 'windows' : 'macos';
 
+  /// Custom update host (docs/update-plan.md §3 Option B shape:
+  /// `<base>/latest.json` with a `platforms` map). When null the client uses
+  /// GitHub Releases; the env var `COMPRESSTOR_UPDATE_BASE` overrides it
+  /// without a rebuild (used by local e2e tests and future self-hosting).
+  final String? baseUrl;
+
+  Uri _manifestUri() => baseUrl == null
+      ? Uri.parse('https://api.github.com/repos/$repo/releases/latest')
+      : Uri.parse('$baseUrl/latest.json');
+
+  Map<String, String> _manifestHeaders() => baseUrl == null
+      ? {
+          'Accept': 'application/vnd.github+json',
+          'User-Agent': 'Compresstor-update-check',
+        }
+      : {'User-Agent': 'Compresstor-update-check'};
+
   /// The latest published update for [platform], or null when the local
   /// version already is the newest (caller compares).
   Future<UpdateManifest> fetchManifest() async {
-    final uri = Uri.parse('https://api.github.com/repos/$repo/releases/latest');
-    final res = await _http.get(
-      uri,
-      headers: {
-        'Accept': 'application/vnd.github+json',
-        'User-Agent': 'Compresstor-update-check',
-      },
-    );
+    final res = await _http.get(_manifestUri(), headers: _manifestHeaders());
     if (res.statusCode != 200) {
       throw UpdateFetchException(
           'Update check failed (HTTP ${res.statusCode}).');
     }
     final data = jsonDecode(res.body) as Map<String, dynamic>;
+
+    // latest.json shape (Option B / local e2e): version + notes + platforms.
+    final platforms = data['platforms'];
+    if (platforms is Map<String, dynamic>) {
+      return _manifestFromSelfHosted(data, platforms);
+    }
+
+    // GitHub Releases shape: tag_name + body + assets.
     final tag = (data['tag_name'] as String?) ?? '';
     if (tag.isEmpty) throw UpdateFetchException('Release has no version tag.');
-
     final version = UpdateVersion.parse(tag);
     final notes = _firstLine((data['body'] as String?) ?? '');
     final assets =
@@ -156,7 +175,36 @@ class UpdateClient {
     );
   }
 
-  /// Name of the artifact for this platform (Compresstor-<ver>-<platform>.zip).
+  UpdateManifest _manifestFromSelfHosted(
+      Map<String, dynamic> data, Map<String, dynamic> platforms) {
+    final rawVersion = (data['version'] as String?) ?? '';
+    if (rawVersion.isEmpty) {
+      throw UpdateFetchException('Manifest has no version.');
+    }
+    final platformEntry = platforms[platform];
+    if (platformEntry is! Map<String, dynamic>) {
+      throw UpdateFetchException(
+          'No $platform entry in the update manifest.');
+    }
+    final url = (platformEntry['url'] as String?) ?? '';
+    final sha256 = ((platformEntry['sha256'] as String?) ?? '').trim();
+    if (url.isEmpty) {
+      throw UpdateFetchException(
+          'No download URL for $platform in the update manifest.');
+    }
+    if (sha256.isEmpty) {
+      throw UpdateFetchException(
+          'No checksum for $platform in the update manifest.');
+    }
+    return UpdateManifest(
+      version: UpdateVersion.parse(rawVersion),
+      notes: _firstLine((data['notes'] as String?) ?? ''),
+      sha256: sha256,
+      downloadUrl: Uri.parse(url),
+    );
+  }
+
+  /// Name of the artifact for this platform (`Compresstor-<ver>-<platform>.zip`).
   String? _platformAssetName(List<Map<String, dynamic>> assets) {
     for (final a in assets) {
       final name = (a['name'] as String?) ?? '';
@@ -165,7 +213,7 @@ class UpdateClient {
     return null;
   }
 
-  /// Reads Compresstor-<ver>.sha256 and returns the digest for [zipName].
+  /// Reads `Compresstor-<ver>.sha256` and returns the digest for [zipName].
   Future<String> _fetchChecksum(
       List<Map<String, dynamic>> assets, String zipName) async {
     Map<String, dynamic>? shaAsset;

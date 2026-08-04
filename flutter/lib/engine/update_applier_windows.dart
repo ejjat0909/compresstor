@@ -9,6 +9,8 @@
 
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import 'update_applier.dart';
 import 'update_client.dart' show UpdateFetchException;
 
@@ -38,7 +40,7 @@ class WindowsUpdateApplier implements UpdateApplier {
 
       // 3. Write the detached updater bat into the extract dir.
       final bat = File('${installTemp.path}\\apply_update.bat');
-      bat.writeAsStringSync(_batScript(exeDir.path));
+      bat.writeAsStringSync(batScript(exeDir.path));
       if (!File('${installTemp.path}\\compresstor.exe').existsSync()) {
         throw UpdateFetchException(
             'Update package has no compresstor.exe inside.');
@@ -54,7 +56,11 @@ class WindowsUpdateApplier implements UpdateApplier {
     exit(0); // the bat waits for this process to end, then swaps
   }
 
-  String _batScript(String exeDir) {
+  /// Builds the detached swap script (waits for the exe to exit, rmdir the
+  /// install dir, xcopy the new build in, relaunch, self-delete). Kept a pure
+  /// function so a test can assert the exact commands without running cmd.
+  @visibleForTesting
+  String batScript(String exeDir) {
     return '''
 @echo off
 setlocal

@@ -4,6 +4,8 @@
 
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import 'update_applier.dart';
 import 'update_client.dart' show UpdateFetchException;
 
@@ -16,6 +18,27 @@ class MacOsUpdateApplier implements UpdateApplier {
 
   @override
   Future<void> apply(File zip) async {
+    final current = currentAppBundle();
+    await swapBundle(zip, current);
+
+    // Hand off to the new instance; this process exits so the swap is final.
+    final binary = '${current.path}/Contents/MacOS/'
+        '${Platform.resolvedExecutable.split('/').last}';
+    if (!File(binary).existsSync()) {
+      throw UpdateFetchException('New app binary not found at $binary.');
+    }
+    await Process.start(binary, []);
+    if (zip.existsSync()) zip.deleteSync();
+    exit(0);
+  }
+
+  /// Extracts [zip]'s `Compresstor.app`, strips quarantine, and swaps it for
+  /// the running [currentBundle] — rm the live bundle first (taskgated rule,
+  /// never copy over a live bundle), then mv the new one in. Returns the
+  /// bundle now in place. Separated from [apply] so real-file tests can run
+  /// it against temp bundles.
+  @visibleForTesting
+  Future<Directory> swapBundle(File zip, Directory currentBundle) async {
     final installTemp =
         Directory.systemTemp.createTempSync('compresstor-install-');
     try {
@@ -32,25 +55,15 @@ class MacOsUpdateApplier implements UpdateApplier {
           'xattr', ['-dr', 'com.apple.quarantine', newApp.path]);
 
       // 3. Swap: rm the live bundle first (taskgated rule), then move.
-      final current = currentAppBundle();
-      if (current.existsSync()) {
-        await runUpdateProcess('rm', ['-rf', current.path]);
+      if (currentBundle.existsSync()) {
+        await runUpdateProcess('rm', ['-rf', currentBundle.path]);
       }
-      await runUpdateProcess('mv', [newApp.path, current.path]);
-
-      // 4. Relaunch the new instance; this process exits below.
-      final binary = '${current.path}/Contents/MacOS/'
-          '${Platform.resolvedExecutable.split('/').last}';
-      if (!File(binary).existsSync()) {
-        throw UpdateFetchException('New app binary not found at $binary.');
-      }
-      await Process.start(binary, []);
+      await runUpdateProcess('mv', [newApp.path, currentBundle.path]);
+      return currentBundle;
     } finally {
       if (installTemp.existsSync()) {
         installTemp.deleteSync(recursive: true);
       }
-      if (zip.existsSync()) zip.deleteSync();
     }
-    exit(0); // hand off to the new instance
   }
 }

@@ -134,6 +134,83 @@ void main() {
     });
   });
 
+  group('UpdateClient.fetchManifest (self-hosted latest.json)', () {
+    const base = 'http://127.0.0.1:9999';
+    Map<String, dynamic> latestJson({String version = '1.0.1'}) => {
+          'version': version,
+          'build': 2,
+          'notes': 'Self-hosted notes line.',
+          'platforms': {
+            'macos': {
+              'url': '$base/Compresstor-1.0.1-macos.zip',
+              'sha256': 'aa11bb',
+            },
+            'windows': {
+              'url': '$base/Compresstor-1.0.1-windows.zip',
+              'sha256': 'cc22dd',
+            },
+          },
+        };
+
+    test('parses the platform entry from latest.json', () async {
+      final client = UpdateClient(
+        httpClient: MockClient((req) async {
+          expect(req.url.toString(), '$base/latest.json');
+          return http.Response(jsonEncode(latestJson()), 200,
+              headers: {'content-type': 'application/json'});
+        }),
+        platform: 'macos',
+        baseUrl: base,
+      );
+      final m = await client.fetchManifest();
+      expect(m.version.toString(), '1.0.1');
+      expect(m.notes, 'Self-hosted notes line.');
+      expect(m.sha256, 'aa11bb');
+      expect(m.downloadUrl.toString(), '$base/Compresstor-1.0.1-macos.zip');
+    });
+
+    test('picks the windows entry for windows', () async {
+      final client = UpdateClient(
+        httpClient: MockClient((req) async =>
+            http.Response(jsonEncode(latestJson()), 200)),
+        platform: 'windows',
+        baseUrl: base,
+      );
+      final m = await client.fetchManifest();
+      expect(m.downloadUrl.toString(), '$base/Compresstor-1.0.1-windows.zip');
+      expect(m.sha256, 'cc22dd');
+    });
+
+    test('throws when the platform entry is missing', () async {
+      final client = UpdateClient(
+        httpClient: MockClient((req) async => http.Response(
+            jsonEncode({'version': '1.0.1', 'platforms': <String, Object>{}}),
+            200)),
+        platform: 'macos',
+        baseUrl: base,
+      );
+      expect(client.fetchManifest(),
+          throwsA(isA<UpdateFetchException>()));
+    });
+
+    test('throws when the checksum is missing', () async {
+      final client = UpdateClient(
+        httpClient: MockClient((req) async => http.Response(
+            jsonEncode({
+              'version': '1.0.1',
+              'platforms': {
+                'macos': {'url': '$base/x.zip'},
+              },
+            }),
+            200)),
+        platform: 'macos',
+        baseUrl: base,
+      );
+      expect(client.fetchManifest(),
+          throwsA(isA<UpdateFetchException>()));
+    });
+  });
+
   group('UpdateClient.download', () {
     test('writes bytes to the target and reports progress', () async {
       final bytes = List<int>.generate(1000, (i) => i % 251);
