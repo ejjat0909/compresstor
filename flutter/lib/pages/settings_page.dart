@@ -9,12 +9,18 @@ import '../components/button.dart';
 import '../components/card.dart';
 import '../components/dropdown.dart';
 import '../components/input.dart';
+import '../components/progress.dart';
 import '../components/switch.dart';
 import '../components/toast.dart';
 import '../engine/models.dart';
+import '../engine/update_applier_macos.dart';
+import '../engine/update_applier_windows.dart';
+import '../engine/update_client.dart';
 import '../state/app_controller.dart';
 import '../state/app_scope.dart';
+import '../state/update_controller.dart';
 import '../theme/app_theme.dart';
+import '../theme/icons.dart';
 import '../theme/spacing.dart';
 
 const _accentPresets = <(String, String)>[
@@ -29,7 +35,11 @@ const _accentPresets = <(String, String)>[
 ];
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({super.key, this.updateController});
+
+  /// Injectable for tests; when null the page owns a real controller
+  /// (GitHub Releases transport + the platform applier).
+  final UpdateController? updateController;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -49,6 +59,29 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _initialized = false;
 
   AppController? _prev;
+
+  late final UpdateController _update;
+  late final bool _ownsUpdate;
+  UpdateStatus _lastUpdateStatus = UpdateStatus.idle;
+
+  @override
+  void initState() {
+    super.initState();
+    _ownsUpdate = widget.updateController == null;
+    _update = widget.updateController ?? _defaultUpdateController();
+    _update.addListener(_onUpdateChanged);
+    if (_ownsUpdate) {
+      _update.loadVersion(); // async — the About card rebuilds when it lands
+    }
+  }
+
+  UpdateController _defaultUpdateController() {
+    final isWindows = UpdateClient.defaultUpdatePlatform() == 'windows';
+    return UpdateController(
+      client: UpdateClient(),
+      applier: isWindows ? WindowsUpdateApplier() : MacOsUpdateApplier(),
+    );
+  }
 
   @override
   void didChangeDependencies() {
@@ -79,6 +112,10 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void dispose() {
     _prev?.removeListener(_tick);
+    _update.removeListener(_onUpdateChanged);
+    if (_ownsUpdate) {
+      _update.dispose();
+    }
     _historyCtl.dispose();
     _suffixCtl.dispose();
     _folderCtl.dispose();
@@ -89,6 +126,33 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!mounted) return;
     _loadFromController(_prev!);
     setState(() {});
+  }
+
+  /// Fires toasts on update-state transitions (once per transition).
+  void _onUpdateChanged() {
+    if (!mounted) return;
+    final s = _update.status;
+    if (s == UpdateStatus.upToDate && _lastUpdateStatus != UpdateStatus.upToDate) {
+      ToastHost.of(context).success(
+        'You\u2019re up to date',
+        'You\u2019re running the latest version '
+            '(${_update.currentVersion}).',
+      );
+    } else if (s == UpdateStatus.error &&
+        _lastUpdateStatus != UpdateStatus.error) {
+      if (_update.manifest == null) {
+        ToastHost.of(context).danger(
+          'Couldn\u2019t check for updates',
+          _update.error ?? 'Something went wrong.',
+        );
+      } else {
+        ToastHost.of(context).danger(
+          'Update failed',
+          _update.error ?? 'Something went wrong.',
+        );
+      }
+    }
+    _lastUpdateStatus = s;
   }
 
   AppController get _c => _prev ?? AppScope.of(context);
@@ -286,21 +350,167 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildAboutCard(AppTheme theme) {
     return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('About', style: theme.typography.cardTitle),
-          const SizedBox(height: 8),
-          Text('Compresstor 1.0.0', style: theme.typography.body),
-          const SizedBox(height: 4),
-          Text(
-            'Compresses PDF and image files entirely on your device. '
-            'Files never leave your computer.',
-            style: theme.typography.caption,
-          ),
-        ],
+      child: ListenableBuilder(
+        listenable: _update,
+        builder: (context, _) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('About', style: theme.typography.cardTitle),
+              const SizedBox(height: 8),
+              Text('Compresstor', style: theme.typography.bodyStrong),
+              const SizedBox(height: 2),
+              Text(
+                'Version ${_update.currentVersion}',
+                style: theme.typography.body,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Compresses PDF and image files entirely on your device. '
+                'Files never leave your computer.',
+                style: theme.typography.caption,
+              ),
+              const SizedBox(height: 14),
+              _buildUpdateSection(theme),
+            ],
+          );
+        },
       ),
     );
+  }
+
+  /// Status-driven update controls: Check -> spinner -> up-to-date caption /
+  /// "Update available" row -> download progress -> install -> back to Check.
+  Widget _buildUpdateSection(AppTheme theme) {
+    final u = _update;
+    final Widget child;
+    switch (u.status) {
+      case UpdateStatus.checking:
+        child = Row(
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(theme.palette.textSecondary),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text('Checking for updates\u2026', style: theme.typography.caption),
+          ],
+        );
+      case UpdateStatus.upToDate:
+        child = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                AppIcon('circle-check', size: 14, color: theme.palette.success),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'You\u2019re running the latest version '
+                        '(${u.currentVersion}).',
+                    style: theme.typography.caption,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            AppButton(
+              label: 'Check for updates',
+              icon: 'refresh-cw',
+              variant: ButtonVariant.ghost,
+              size: ButtonSize.sm,
+              onPressed: u.checkForUpdates,
+            ),
+          ],
+        );
+      case UpdateStatus.updateAvailable:
+        final m = u.manifest!;
+        child = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Version ${m.version} is available',
+              style: theme.typography.bodyStrong,
+            ),
+            if (m.notes.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                m.notes,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.typography.caption,
+              ),
+            ],
+            const SizedBox(height: 10),
+            AppButton(
+              label: 'Update',
+              icon: 'download',
+              variant: ButtonVariant.primary,
+              size: ButtonSize.sm,
+              onPressed: u.update,
+            ),
+          ],
+        );
+      case UpdateStatus.downloading:
+        child = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppProgress(value: u.progress),
+            const SizedBox(height: 6),
+            Text(
+              'Downloading\u2026 ${(u.progress * 100).round()}%',
+              style: theme.typography.caption,
+            ),
+          ],
+        );
+      case UpdateStatus.applying:
+        child = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppProgress(),
+            const SizedBox(height: 6),
+            Text(
+              'Installing\u2026 the app will restart.',
+              style: theme.typography.caption,
+            ),
+          ],
+        );
+      case UpdateStatus.error:
+        child = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              u.error ?? 'Something went wrong.',
+              style: theme.typography.caption.copyWith(
+                color: theme.palette.danger,
+              ),
+            ),
+            const SizedBox(height: 10),
+            AppButton(
+              label: u.manifest != null ? 'Update' : 'Check for updates',
+              icon: u.manifest != null ? 'download' : 'refresh-cw',
+              variant:
+                  u.manifest != null ? ButtonVariant.primary : ButtonVariant.ghost,
+              size: ButtonSize.sm,
+              onPressed: u.manifest != null ? u.update : u.checkForUpdates,
+            ),
+          ],
+        );
+      case UpdateStatus.idle:
+      case UpdateStatus.relaunched:
+        child = AppButton(
+          label: 'Check for updates',
+          icon: 'refresh-cw',
+          variant: ButtonVariant.ghost,
+          size: ButtonSize.sm,
+          onPressed: u.checkForUpdates,
+        );
+    }
+    return child;
   }
 
   // ------------------------------------------------------------- actions --
