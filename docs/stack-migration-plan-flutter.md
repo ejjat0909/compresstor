@@ -133,16 +133,16 @@ Exit: shell + themed components render; visual diff vs qa_screenshot output.
 
 ### Phase 3 — Dashboard (1-1.5 weeks)
 Port `dashboard_page.py` + `uploadarea.py` + `filetable.py`.
-- [ ] Drag-and-drop + "Add files" picker (file_selector / file_picker pkg) with
+- [x] Drag-and-drop + "Add files" picker (file_selector / file_picker pkg) with
       same accept rules (PDF_EXTENSIONS + IMAGE_EXTENSIONS, reject others as
       "Unsupported file type").
-- [ ] File queue table: name, kind badge, size, status (pending/running/done/
+- [x] File queue table: name, kind badge, size, status (pending/running/done/
       failed/skipped), per-row remove; chips for selections, no truncation
       (match existing row style: no dividers, compact padding).
-- [ ] Compression options panel: level presets (High/Balanced/Maximum),
+- [x] Compression options panel: level presets (High/Balanced/Maximum),
       output mode (suffix/directory/overwrite), suffix field, max-size MB,
       overwrite confirmation toggle — exact labels from the PySide6 settings.
-- [ ] Compression actions: Run (spawns engine), Cancel mid-run, progress bar
+- [x] Compression actions: Run (spawns engine), Cancel mid-run, progress bar
       + per-file status streamed from engine events.
 Exit: a full batch compresses through the engine with live progress and
 correct output paths (resolve_output_path logic stays in Python).

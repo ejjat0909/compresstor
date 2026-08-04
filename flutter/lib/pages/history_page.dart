@@ -28,9 +28,11 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> unawaitedLoad() async {
-    const client = EngineClient();
-    await for (final event in client.run('history',
-        request: {'action': 'list', 'limit': 200})) {
+    final client = EngineClient();
+    await for (final event in client.run(
+      'history',
+      request: {'action': 'list', 'limit': 200},
+    )) {
       if (event['type'] == 'history') {
         setState(() {
           _entries = List<Map<String, dynamic>>.from(event['entries'] ?? []);
@@ -91,7 +93,9 @@ class _HistoryPageState extends State<HistoryPage> {
                       for (final e in _entries.take(50))
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             border: Border(
                               bottom: BorderSide(color: palette.borderSoft),

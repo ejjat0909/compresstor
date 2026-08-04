@@ -47,23 +47,28 @@ class AppButton extends StatelessWidget {
 
     final children = <Widget>[];
     if (loading) {
-      children.add(SizedBox(
-        width: 14,
-        height: 14,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation(foreground),
+      children.add(
+        SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation(foreground),
+          ),
         ),
-      ));
+      );
     } else if (icon != null) {
       children.add(AppIcon(icon!, size: 16, color: foreground));
     }
     if (!_iconOnly && label.isNotEmpty) {
       if (children.isNotEmpty) children.add(const SizedBox(width: 8));
       children.add(
-        Text(
-          label,
-          style: theme.typography.button.copyWith(color: foreground),
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: theme.typography.button.copyWith(color: foreground),
+          ),
         ),
       );
     }
@@ -211,10 +216,10 @@ class _ClickShellState extends State<_ClickShell> {
     final color = disabled
         ? widget.background.withValues(alpha: 0.5)
         : _down
-            ? widget.pressed
-            : _hovering
-                ? widget.hover
-                : widget.background;
+        ? widget.pressed
+        : _hovering
+        ? widget.hover
+        : widget.background;
 
     return MouseRegion(
       cursor: disabled ? SystemMouseCursors.basic : SystemMouseCursors.click,

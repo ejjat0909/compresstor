@@ -37,9 +37,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    const client = EngineClient();
-    await for (final event in client.run('settings',
-        request: {'action': 'get'})) {
+    final client = EngineClient();
+    await for (final event in client.run(
+      'settings',
+      request: {'action': 'get'},
+    )) {
       if (event['type'] == 'settings') {
         setState(() {
           _settings = Map<String, dynamic>.from(event['settings'] ?? {});
@@ -75,44 +77,61 @@ class _SettingsPageState extends State<SettingsPage> {
           if (settings == null)
             Text('Loading…', style: theme.typography.secondary)
           else ...[
-            _row(theme, 'Default level', AppDropdown<String>(
-              value: settings['default_level'] as String? ?? 'balanced',
-              options: const [
-                DropdownOption('high', 'High quality'),
-                DropdownOption('balanced', 'Balanced'),
-                DropdownOption('maximum', 'Maximum savings'),
-              ],
-              onChanged: (v) => setState(() => settings['default_level'] = v),
-            )),
-            _row(theme, 'Output mode', AppDropdown<String>(
-              value: settings['output_mode'] as String? ?? 'suffix',
-              options: const [
-                DropdownOption('suffix', 'Add suffix'),
-                DropdownOption('directory', 'Output folder'),
-                DropdownOption('overwrite', 'Overwrite'),
-              ],
-              onChanged: (v) => setState(() => settings['output_mode'] = v),
-            )),
-            _row(theme, 'History limit', AppInput(
-              controller: _historyCtl,
-              onChanged: (v) => settings['history_limit'] = int.tryParse(v) ?? 200,
-            )),
-            _switchRow(theme, 'Overwrite confirmation',
-                settings['overwrite_confirmation'] == true, (v) {
-              setState(() => settings['overwrite_confirmation'] = v);
-            }),
-            _switchRow(theme, 'Add to history',
-                settings['add_to_history'] == true, (v) {
-              setState(() => settings['add_to_history'] = v);
-            }),
+            _row(
+              theme,
+              'Default level',
+              AppDropdown<String>(
+                value: settings['default_level'] as String? ?? 'balanced',
+                options: const [
+                  DropdownOption('high', 'High quality'),
+                  DropdownOption('balanced', 'Balanced'),
+                  DropdownOption('maximum', 'Maximum savings'),
+                ],
+                onChanged: (v) => setState(() => settings['default_level'] = v),
+              ),
+            ),
+            _row(
+              theme,
+              'Output mode',
+              AppDropdown<String>(
+                value: settings['output_mode'] as String? ?? 'suffix',
+                options: const [
+                  DropdownOption('suffix', 'Add suffix'),
+                  DropdownOption('directory', 'Output folder'),
+                  DropdownOption('overwrite', 'Overwrite'),
+                ],
+                onChanged: (v) => setState(() => settings['output_mode'] = v),
+              ),
+            ),
+            _row(
+              theme,
+              'History limit',
+              AppInput(
+                controller: _historyCtl,
+                onChanged: (v) =>
+                    settings['history_limit'] = int.tryParse(v) ?? 200,
+              ),
+            ),
+            _switchRow(
+              theme,
+              'Overwrite confirmation',
+              settings['overwrite_confirmation'] == true,
+              (v) {
+                setState(() => settings['overwrite_confirmation'] = v);
+              },
+            ),
+            _switchRow(
+              theme,
+              'Add to history',
+              settings['add_to_history'] == true,
+              (v) {
+                setState(() => settings['add_to_history'] = v);
+              },
+            ),
             const SizedBox(height: 20),
             Align(
               alignment: Alignment.centerRight,
-              child: AppButton(
-                label: 'Save',
-                icon: 'check',
-                onPressed: null,
-              ),
+              child: AppButton(label: 'Save', icon: 'check', onPressed: null),
             ),
           ],
         ],
@@ -138,7 +157,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _switchRow(
-      AppTheme theme, String label, bool value, ValueChanged<bool> onChanged) {
+    AppTheme theme,
+    String label,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: AppCard(
