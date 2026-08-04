@@ -73,4 +73,3 @@ jobs:
           files: |
             artifacts/Compresstor-*-macos.zip
             artifacts/Compresstor-*-windows.zip
-            artifacts/Compresstor-*.sha256
