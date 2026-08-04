@@ -17,9 +17,34 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Fresh-machine bootstrap: locate a Python >= 3.10 and create the venv.
+find_python3() {
+  for c in python3.13 python3.12 python3.11 python3.10 python3; do
+    if command -v "$c" >/dev/null 2>&1 &&
+       "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+      echo "$c"
+      return 0
+    fi
+  done
+  return 1
+}
+
 PY=.venv/bin/python
-[ -x "$PY" ] || { echo "No .venv found — run: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"; exit 1; }
-command -v flutter >/dev/null || { echo "flutter not on PATH"; exit 1; }
+if [ ! -x "$PY" ]; then
+  PY3=$(find_python3) || {
+    echo "No Python >= 3.10 found. Install a recent Python 3 "
+    echo "(https://www.python.org/downloads/ or brew install python@3.12) and retry."
+    exit 1
+  }
+  echo "==> Bootstrapping .venv with $PY3…"
+  "$PY3" -m venv .venv
+  .venv/bin/pip install --upgrade pip
+  .venv/bin/pip install -r requirements.txt pyinstaller
+fi
+command -v flutter >/dev/null || {
+  echo "flutter not on PATH — install from https://docs.flutter.dev/get-started/install (macOS: Xcode + CocoaPods required)"
+  exit 1
+}
 
 export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-12.0}"
 
