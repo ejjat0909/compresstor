@@ -23,10 +23,10 @@ so replacing the app replaces the engine too.
 
 Today the version is hardcoded in two unrelated places:
 
-| Where | Value | Used for |
-|---|---|---|
-| `flutter/pubspec.yaml` line 19 | `version: 1.0.0+1` | CFBundleShortVersionString (macOS) / Windows product version — set at `flutter build` time |
-| `flutter/lib/pages/settings_page.dart:294` | `Text('Compresstor 1.0.0')` | What the About card displays |
+| Where                                        | Value                         | Used for                                                                                     |
+| -------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------- |
+| `flutter/pubspec.yaml` line 19             | `version: 1.0.0+1`          | CFBundleShortVersionString (macOS) / Windows product version — set at`flutter build` time |
+| `flutter/lib/pages/settings_page.dart:294` | `Text('Compresstor 1.0.0')` | What the About card displays                                                                 |
 
 That is exactly why "I don't know where to change the version" — there are two
 places, they can drift, and neither is readable by the app at runtime.
@@ -73,12 +73,12 @@ page — above Save/Reset buttons).
 
 ### After clicking "Check for updates"
 
-| Outcome | What the user sees |
-|---|---|
-| Checking… | Button shows a small spinner, label stays **Check for updates**, disabled |
-| Up to date | Success toast **You're up to date** + caption under the button: `You're running the latest version (1.0.0).` |
-| New version | Row appears: **Version 1.0.1 is available** + release-note caption (1 line, truncated) + primary button **[ Update ]** |
-| Check failed | Danger toast **Couldn't check for updates** + caption: `Check your internet connection and try again.` |
+| Outcome      | What the user sees                                                                                                                |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| Checking…   | Button shows a small spinner, label stays**Check for updates**, disabled                                                    |
+| Up to date   | Success toast**You're up to date** + caption under the button: `You're running the latest version (1.0.0).`               |
+| New version  | Row appears:**Version 1.0.1 is available** + release-note caption (1 line, truncated) + primary button **[ Update ]** |
+| Check failed | Danger toast**Couldn't check for updates** + caption: `Check your internet connection and try again.`                     |
 
 ### Update-available state (ASCII)
 
@@ -191,6 +191,7 @@ apply → relaunch. User data is safe by design: settings/history live in
 ## 5. Implementation tasks (TDD, bite-sized)
 
 ### Task 1 — `version.json` single source + build-script sync
+
 - Create `version.json` at repo root: `{ "name": "compresstor", "version": "1.0.0", "build": 1 }`.
 - Create `flutter/assets/version.json` (same content — committed; build script overwrites it) and add `- assets/version.json` to `pubspec.yaml` assets.
 - `scripts/build_macos.sh`: read root `version.json` (python one-liner), pass `--build-name/--build-number` to `flutter build macos --release`, `cp version.json flutter/assets/version.json` before the build, and copy it into `$APP/Contents/Resources/version.json` in Stage 3.
@@ -198,6 +199,7 @@ apply → relaunch. User data is safe by design: settings/history live in
 - Verify: build the app, check `Info.plist` CFBundleShortVersionString + bundled file; `flutter test` still green.
 
 ### Task 2 — `UpdateClient` (transport) with tests
+
 - Create `flutter/lib/engine/update_client.dart`:
   - `fetchManifest()` → `UpdateManifest { version, build, notes, sha256, downloadUrl }` (parse GitHub API JSON or `latest.json` — one parser, tolerant).
   - `download(url, targetFile, onProgress)` — `http` package, content-length progress, temp file, cleanup on error.
@@ -206,6 +208,7 @@ apply → relaunch. User data is safe by design: settings/history live in
 - Tests: `flutter/test/update_client_test.dart` — manifest parse (GitHub + latest.json shapes), version compare (semver: 1.0.1 > 1.0.0, build tiebreak), download+hash verify OK, hash mismatch fails, HTTP error surfaces.
 
 ### Task 3 — `UpdateController` (state machine)
+
 - Create `flutter/lib/state/update_controller.dart` (`ChangeNotifier`):
   - States: `idle → checking → upToDate | updateAvailable → downloading(progress) → applying → relaunched`; errors go to `error(message)` and return to previous state.
   - Holds current version (read from bundled `version.json` via `rootBundle`, fallback `0.0.0-dev`), the manifest, and the platform artifact.
@@ -214,16 +217,19 @@ apply → relaunch. User data is safe by design: settings/history live in
 - Tests: fake transport + fake applier → state transitions, double-click guard (button disabled while busy), failure paths.
 
 ### Task 4 — About card UI (Settings)
+
 - `flutter/lib/pages/settings_page.dart`: replace hardcoded `Text('Compresstor 1.0.0')` with `Version ${controller.version}`; add the **Check for updates** ghost button + the state rows from §2.
 - Wire `UpdateController` in (SettingsPage already receives the app controller — extend or pass alongside).
 - Widget tests: idle renders version from injected value; check → spinner; up-to-date toast; update-available shows **Update**; click **Update** shows progress; failure shows toast; no pending timers at test end (drainToasts).
 
 ### Task 5 — update artifacts in the build pipeline
+
 - `scripts/build_macos.sh`: after the release install, create `release/Compresstor-<ver>-macos.zip` from `release/MacOS/Compresstor.app` (`ditto -c -k`) + `Compresstor-<ver>.sha256` lines.
 - `scripts/build_windows.bat`: zip `release\Windows\Compresstor\` → `Compresstor-<ver>-windows.zip` (PowerShell `Compress-Archive`).
 - Create `scripts/publish_release.sh` (Option A): `gh release create v<ver> <zips> <sha256>` with the release notes — one command per release.
 
 ### Task 6 — end-to-end verification
+
 - Unit/widget: `flutter test` (all green, incl. new files).
 - macOS real run: build with a bumped temp version, host the zip locally (or GitHub draft release), run the release app → Check for updates → Update → confirm it relaunches at the new version with settings/history intact.
 - Windows: bat-script logic verified by review + a manual run on a Windows box when available (no Windows machine here — flagged as a follow-up, same as the Phase 6 Windows build).
@@ -232,21 +238,21 @@ apply → relaunch. User data is safe by design: settings/history live in
 
 ## 6. Files touched (summary)
 
-| Action | Path |
-|---|---|
-| Create | `version.json` (repo root) |
-| Create | `flutter/assets/version.json` |
-| Create | `flutter/lib/engine/update_client.dart` |
-| Create | `flutter/lib/state/update_controller.dart` |
-| Create | `flutter/lib/engine/update_applier_macos.dart`, `…_windows.dart` |
-| Create | `scripts/publish_release.sh` |
+| Action | Path                                                                      |
+| ------ | ------------------------------------------------------------------------- |
+| Create | `version.json` (repo root)                                              |
+| Create | `flutter/assets/version.json`                                           |
+| Create | `flutter/lib/engine/update_client.dart`                                 |
+| Create | `flutter/lib/state/update_controller.dart`                              |
+| Create | `flutter/lib/engine/update_applier_macos.dart`, `…_windows.dart`     |
+| Create | `scripts/publish_release.sh`                                            |
 | Create | `flutter/test/update_client_test.dart`, `update_controller_test.dart` |
-| Modify | `flutter/pubspec.yaml` (`http` dep + asset) |
-| Modify | `flutter/lib/pages/settings_page.dart` (About card) |
-| Modify | `flutter/lib/state/app_scope.dart` (wire UpdateController) |
-| Modify | `scripts/build_macos.sh`, `scripts/build_windows.bat` |
-| Modify | `flutter/test/settings_page_test.dart` |
-| Docs | `README.md` (release flow: bump version.json → build → publish) |
+| Modify | `flutter/pubspec.yaml` (`http` dep + asset)                           |
+| Modify | `flutter/lib/pages/settings_page.dart` (About card)                     |
+| Modify | `flutter/lib/state/app_scope.dart` (wire UpdateController)              |
+| Modify | `scripts/build_macos.sh`, `scripts/build_windows.bat`                 |
+| Modify | `flutter/test/settings_page_test.dart`                                  |
+| Docs   | `README.md` (release flow: bump version.json → build → publish)       |
 
 ---
 

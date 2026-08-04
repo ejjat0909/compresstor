@@ -108,8 +108,8 @@ Turn the prototype into the real engine backend.
 - [ ] `engine_cli.py` (or `engine_server.py` if B/C chosen) in repo root or
   `app/engine/`:
   - `compress`: accepts FileItem list + CompressionOptions (JSON), streams
-  per-file progress events, returns JobResult list; honours a `cancel`
-  flag (new `should_cancel` wiring on stdin for option C).
+    per-file progress events, returns JobResult list; honours a `cancel`
+    flag (new `should_cancel` wiring on stdin for option C).
   - `history list|add|clear|remove` -> HistoryUseCase + json_stores.
   - `settings get|set` -> SettingsUseCase + json_stores.
 - [ ] Schema: one JSON request per line in, one JSON event per line out;
@@ -152,8 +152,8 @@ Port `dashboard_page.py` + `uploadarea.py` + `filetable.py`.
   overwrite confirmation toggle — exact labels from the PySide6 settings.
 - [X] Compression actions: Run (spawns engine), Cancel mid-run, progress bar
   + per-file status streamed from engine events.
-  Exit: a full batch compresses through the engine with live progress and
-  correct output paths (resolve_output_path logic stays in Python).
+    Exit: a full batch compresses through the engine with live progress and
+    correct output paths (resolve_output_path logic stays in Python).
 
 ### Phase 4 — History & Settings (1 week)
 
@@ -238,19 +238,19 @@ Phase 6 follow-ups (not done here):
 
 ### Phase 7 — Parallel run, QA & cleanup (1 week)
 
-- [x] Ship the new app as the default (`release/MacOS/Compresstor.app`); the old
+- [X] Ship the new app as the default (`release/MacOS/Compresstor.app`); the old
   universal2 build stays available for a/b as
   `release/MacOS/Compresstor-1.0.0.dmg` during the transition.
-- [x] Visual QA pass: golden renders of the REAL shell + all three pages
+- [X] Visual QA pass: golden renders of the REAL shell + all three pages
   (`test/visual_qa_test.dart` → `test/goldens/*.png`, byte-stable across runs,
   real fonts/icons verified programmatically). First pass caught and fixed a
   real sidebar brand-row overflow (3.8 px — fixed with `Expanded` + ellipsis).
   Golden tests fail on any RenderFlex overflow, so the whole shell is
   overflow-free at 1280×800 (pages also covered at 800×600 by the Phase 5
   widget tests).
-- [x] README update: architecture diagram + two-stage build instructions
+- [X] README update: architecture diagram + two-stage build instructions
   (Phase 6) + golden regeneration command.
-- [x] Remove app/presentation/ + PySide6 deps from requirements.txt (parity
+- [X] Remove app/presentation/ + PySide6 deps from requirements.txt (parity
   confirmed in Phase 5). main.py removed — engine_cli owns the entry point.
   Sidecar rebuilt and release app re-bundled/re-signed and re-verified headless
   AFTER the removal, so packaging has zero PySide6 dependency.
@@ -274,16 +274,18 @@ Phase 6 follow-ups (not done here):
 
 ## 6. Definition of Done (whole migration)
 
-- [x] Flutter app compresses PDFs + images with results identical to the
+- [X] Flutter app compresses PDFs + images with results identical to the
   PySide6 app (same engine, same options) — `scripts/parity_check.py`,
   `tests/test_parity.py`.
-- [x] History and settings survive app restarts (engine-owned JSON stores).
-- [x] All engine tests + CLI tests + Dart tests pass (pytest 38; flutter 67
+- [X] History and settings survive app restarts (engine-owned JSON stores).
+- [X] All engine tests + CLI tests + Dart tests pass (pytest 38; flutter 67
   incl. goldens; integration test).
+
 - [~] Installable macOS .app (arm64 engine + universal2 Flutter binary) on a
   clean machine — verified here. Full universal2 engine + Windows .exe remain
   follow-ups (see Phase 6).
-- [x] PySide6 removed from the repo; README + docs updated.
+
+- [X] PySide6 removed from the repo; README + docs updated.
 
 ## 7. Rough timeline
 
