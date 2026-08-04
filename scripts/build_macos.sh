@@ -57,10 +57,10 @@ echo "==> Re-signing app bundle (ad-hoc, deep)…"
 codesign --force --deep --sign - "$APP" || echo "WARN: codesign --deep failed"
 codesign --verify --deep --strict "$APP" || echo "WARN: codesign --verify reported issues"
 
-echo "==> Installing to release/MacOS/ (rm old bundle first — taskgated rule)…"
+echo "==> Installing to release/MacOS/Compresstor.app (rm old first — taskgated rule)…"
 rm -rf release/MacOS/Compresstor.app
 mkdir -p release/MacOS
-cp -R "$APP" release/MacOS/
+cp -R "$APP" release/MacOS/Compresstor.app
 
 echo "==> Cleanup build artifacts…"
 rm -rf build dist

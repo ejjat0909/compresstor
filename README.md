@@ -49,7 +49,9 @@ python3.11 -m venv .venv
 .venv/bin/pip install pyinstaller        # only needed for release builds
 
 cd flutter && flutter pub get && flutter run          # app + engine (dev)
-cd flutter && flutter test                             # 64 Dart tests
+cd flutter && flutter test                             # 67 Dart tests (incl. goldens)
+cd flutter && flutter test test/visual_qa_test.dart --update-goldens
+#                                                       regenerate test/goldens/*.png
 .venv/bin/python -m pytest tests/                     # 38 engine tests
 cd flutter && flutter test integration_test/compression_flow_test.dart -d macos
 #                                                       real engine through the UI

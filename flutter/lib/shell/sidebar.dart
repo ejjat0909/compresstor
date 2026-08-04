@@ -55,7 +55,13 @@ class AppSidebar extends StatelessWidget {
               children: [
                 AppIcon('sparkles', size: 20, color: palette.accent),
                 const SizedBox(width: 10),
-                Text('Compresstor', style: theme.typography.bodyStrong),
+                Expanded(
+                  child: Text(
+                    'Compresstor',
+                    style: theme.typography.bodyStrong,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ),

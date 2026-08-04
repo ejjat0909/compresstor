@@ -1,6 +1,6 @@
 # Engine Parity Report
 
-Same fixtures through the old app engine path (`CompressUseCase`
+Same fixtures through the legacy engine path (`CompressUseCase`
 directly) vs the new engine CLI (`engine_cli.py compress`, as the
 Flutter app spawns it). Both paths share the same core use case +
 compressors, so output SIZES must be identical for every file.

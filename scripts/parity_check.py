@@ -3,7 +3,7 @@
 Runs the SAME fixtures through both compression entry points and proves the
 results are identical:
 
-  OLD path (the PySide6 app's engine path):
+  OLD path (the previous stacked/legacy engine path — now removed with PySide6):
       CompressUseCase(CompressorRegistry()).run(...)  — in-process, as
       app/presentation/app_controller.py wires it.
 
@@ -229,7 +229,7 @@ def render_markdown(rows: list[dict]) -> str:
     lines = [
         "# Engine Parity Report",
         "",
-        "Same fixtures through the old app engine path (`CompressUseCase`",
+        "Same fixtures through the legacy engine path (`CompressUseCase`",
         "directly) vs the new engine CLI (`engine_cli.py compress`, as the",
         "Flutter app spawns it). Both paths share the same core use case +",
         "compressors, so output SIZES must be identical for every file.",

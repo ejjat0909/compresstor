@@ -1,6 +1,7 @@
-"""Parity regression guard (Phase 5) — same fixtures through the old app
-engine path (CompressUseCase directly, as PySide6 wired it) and the new engine
-CLI (what the Flutter app spawns) must produce IDENTICAL results:
+"""Parity regression guard (Phase 5) — same fixtures through the legacy engine
+path (CompressUseCase directly, as the pre-Flutter app wired it; PySide6 was
+removed in Phase 7) and the new engine CLI (what the Flutter app spawns) must
+produce IDENTICAL results:
 
   - output SIZES identical for every file kind (the documented parity contract)
   - output BYTES identical for deterministic formats (JPEG/WebP/TIFF)

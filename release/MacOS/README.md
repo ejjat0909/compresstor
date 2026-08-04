@@ -1,6 +1,7 @@
 # Compresstor — macOS
 
-**Requirements:** macOS 12.0 or newer (Intel or Apple Silicon).
+**Requirements:** macOS 12.0 or newer — Apple Silicon now; Intel support
+returns once the universal2 engine sidecar is built (see repo docs).
 
 ## Install (drag & drop)
 

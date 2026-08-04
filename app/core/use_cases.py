@@ -29,8 +29,8 @@ from app.core.ports import (
 class CompressorFactory:
     """Returns the right Compressor adapter for a file kind.
 
-    The concrete registry is provided by the composition root (presentation
-    layer) so the core stays framework-agnostic.
+    The concrete registry is provided by the composition root
+    (engine_cli.py / the Flutter app) so the core stays framework-agnostic.
     """
 
     def get_compressor(self, kind: FileKind) -> Optional[Compressor]:
