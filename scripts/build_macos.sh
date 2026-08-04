@@ -23,6 +23,12 @@ command -v flutter >/dev/null || { echo "flutter not on PATH"; exit 1; }
 
 export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-12.0}"
 
+# Single version source: repo-root version.json (docs/update-plan.md).
+VER=$("$PY" -c "import json;print(json.load(open('version.json'))['version'])")
+BUILD=$("$PY" -c "import json;print(json.load(open('version.json'))['build'])")
+echo "==> Version from version.json: $VER (build $BUILD)"
+cp version.json flutter/assets/version.json  # keep the bundled asset in sync
+
 MAKE_DMG=0
 ARCH="${COMPRESSTOR_ARCH:-arm64}"
 for arg in "$@"; do
@@ -42,7 +48,7 @@ COMPRESSTOR_ARCH="$ARCH" "$PY" -m PyInstaller packaging/engine.spec \
 test -x dist/engine_cli/engine_cli || { echo "Sidecar build failed"; exit 1; }
 
 echo "==> Stage 2: Flutter release app…"
-( cd flutter && flutter build macos --release )
+( cd flutter && flutter build macos --release --build-name "$VER" --build-number "$BUILD" )
 
 APP=flutter/build/macos/Build/Products/Release/compresstor.app
 test -d "$APP" || { echo "Flutter app not produced"; exit 1; }
@@ -52,6 +58,7 @@ rm -rf "$APP/Contents/Resources/engine"
 mkdir -p "$APP/Contents/Resources/engine"
 cp -R dist/engine_cli/. "$APP/Contents/Resources/engine/"
 test -x "$APP/Contents/Resources/engine/engine_cli"
+cp version.json "$APP/Contents/Resources/version.json"
 
 echo "==> Re-signing app bundle (ad-hoc, deep)…"
 codesign --force --deep --sign - "$APP" || echo "WARN: codesign --deep failed"

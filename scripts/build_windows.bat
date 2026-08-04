@@ -27,6 +27,15 @@ pip install -r requirements.txt
 pip install pyinstaller
 
 echo.
+echo ==^> Reading version from version.json (single source)...
+for /f "usebackq tokens=1,2" %%a in (`python -c "import json;d=json.load(open('version.json'));print(d['version'],d['build'])"`) do (
+  set VER=%%a
+  set BUILD=%%b
+)
+echo Version: %VER% (build %BUILD%)
+copy /y version.json flutter\assets\version.json >nul
+
+echo.
 echo ==^> Stage 1: engine sidecar (PyInstaller)...
 python -m PyInstaller packaging\engine.spec --noconfirm --distpath dist --workpath build
 if errorlevel 1 exit /b 1
@@ -37,7 +46,7 @@ if not exist dist\engine_cli\engine_cli.exe (
 echo.
 echo ==^> Stage 2: Flutter release app...
 pushd flutter
-call flutter build windows --release
+call flutter build windows --release --build-name %VER% --build-number %BUILD%
 popd
 if errorlevel 1 exit /b 1
 
@@ -51,6 +60,7 @@ echo ==^> Stage 3: bundle engine sidecar...
 if exist "%APP%\engine" rmdir /s /q "%APP%\engine"
 mkdir "%APP%\engine"
 xcopy /e /i /q dist\engine_cli "%APP%\engine" >nul
+copy /y version.json "%APP%\version.json" >nul
 
 echo.
 echo ==^> Installing to release\Windows\Compresstor\...
