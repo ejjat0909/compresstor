@@ -68,10 +68,13 @@ class ToastHostState extends State<ToastHost> {
         Positioned(
           right: 24,
           bottom: 24,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: _toasts.map((t) => _ToastCard(toast: t)).toList(),
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: _toasts.map((t) => _ToastCard(toast: t)).toList(),
+            ),
           ),
         ),
       ],
@@ -100,37 +103,62 @@ class _ToastCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = AppTheme.of(context);
     final AppPalette palette = theme.palette;
-    final (color, icon) = _toneAssets(palette);
+    final (accent, icon) = _toneAssets(palette);
     return Container(
       key: toast.id,
       margin: const EdgeInsets.only(top: 8),
       constraints: const BoxConstraints(maxWidth: 360, minWidth: 240),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: palette.card,
         border: Border.all(color: palette.border),
         borderRadius: AppRadius.lgAll,
         boxShadow: softShadow(palette),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppIcon(icon, size: 18, color: color),
-          const SizedBox(width: 10),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(toast.title, style: theme.typography.bodyStrong),
-                if (toast.message != null) ...[
-                  const SizedBox(height: 2),
-                  Text(toast.message!, style: theme.typography.secondary),
-                ],
-              ],
+      child: ClipRRect(
+        borderRadius: AppRadius.lgAll,
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 3, color: accent),
+              Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppIcon(icon, size: 18, color: accent),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            toast.title,
+                            style: theme.typography.bodyStrong,
+                          ),
+                          if (toast.message != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              toast.message!,
+                              style: theme.typography.secondary,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+        ),
       ),
     );
   }

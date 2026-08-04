@@ -4,6 +4,16 @@
 import 'dart:async';
 
 import 'package:compresstor/engine/engine_client.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+/// Pumps past ToastHost's 4s dismiss timer so widget tests that triggered a
+/// toast don't end with pending timers.
+Future<void> drainToasts(WidgetTester tester) async {
+  for (var i = 0; i < 26; i++) {
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+  await tester.pumpAndSettle();
+}
 
 class FakeEngineClient extends EngineClient {
   FakeEngineClient([Map<String, List<Map<String, dynamic>>>? responses])

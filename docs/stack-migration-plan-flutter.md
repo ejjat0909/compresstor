@@ -148,25 +148,45 @@ Exit: a full batch compresses through the engine with live progress and
 correct output paths (resolve_output_path logic stays in Python).
 
 ### Phase 4 — History & Settings (1 week)
-- [ ] History page: list from engine `history list` (limit 200), columns
+- [x] History page: list from engine `history list` (limit 200), columns
       mirroring history_page.py, per-row actions (open file, remove, clear all).
-- [ ] Settings page: accent color, history limit, default level/output mode,
+- [x] Settings page: accent color, history limit, default level/output mode,
       overwrite confirmation, add-to-history — persisted via engine
       `settings set`.
-- [ ] App settings loaded at startup from engine, applied to theme.
+- [x] App settings loaded at startup from engine, applied to theme.
 Exit: history and settings behave identically to the PySide6 app (compare
 against qa_screenshot render).
 
 ### Phase 5 — Dart tests & engine parity suite (1 week)
-- [ ] Unit: option <-> JSON mapping, event parsing, state reducers.
-- [ ] Widget: dashboard, history, settings golden-ish tests (flutter_test).
-- [ ] Integration (integration_test): full batch compress with a real engine
-      binary; assert file exists, size shrank, history row added.
-- [ ] Parity checklist: run the same fixture files through old app and new app,
-      compare output sizes (compression results MUST be identical — same
-      engine, same options).
-Exit: `flutter test` + `flutter test integration_test` green; parity table
-shows identical compressed sizes.
+- [x] Unit: option <-> JSON mapping, event parsing, state reducers.
+      (`test/engine_models_test.dart`, `test/engine_client_test.dart` against a
+      fake engine fixture, `test/format_test.dart`, `test/app_controller_test.dart`)
+- [x] Widget: dashboard, history, settings widget tests (flutter_test) incl. the
+      save/reset flows on settings and the row-actions menu on history.
+- [x] Integration (`integration_test/compression_flow_test.dart`): a full batch
+      compresses through the REAL engine (PyMuPDF/Pillow) driven via the UI —
+      asserts output file exists, size shrank, and a history row was added
+      (`flutter test integration_test/compression_flow_test.dart -d macos`).
+- [x] Parity checklist: same fixtures through the OLD engine path
+      (`CompressUseCase(CompressorRegistry())` — what PySide6 wired) and the
+      NEW CLI (`engine_cli.py compress`, what Flutter spawns) produce IDENTICAL
+      output sizes (`scripts/parity_check.py` → `docs/parity-report.md`,
+      guarded by `tests/test_parity.py`). Byte-identical outputs additionally
+      for deterministic formats (JPEG/WebP/TIFF); PDFs (random /ID per save)
+      and low-quality PNGs (randomized Floyd–Steinberg dither) are size-only
+      by design.
+Exit: `flutter test` (61) + `flutter test integration_test` green; pytest 38
+green; parity table shows identical compressed sizes.
+
+Phase 5 discoveries (recorded for Phase 6):
+- The macOS **App Sandbox is incompatible with the Python sidecar**: the
+  interpreter shells out to `xcrun` at startup, which the sandbox blocks
+  ("xcrun: error: cannot be used within an App Sandbox"), breaking the engine
+  subprocess. App Sandbox is now disabled in `DebugProfile.entitlements` (debug
+  + `flutter test integration_test`), kept in `Release.entitlements`. Bundling
+  a sandbox-compatible sidecar is a Phase 6 packaging task.
+- `flutter test integration_test -d macos` needs an interactive GUI session to
+  foreground the app; run it from a desktop login, not a headless/SSH shell.
 
 ### Phase 6 — Packaging (1-2 weeks)
 - [ ] Sidecar build: PyInstaller spec for engine only (no Qt! — smaller, no

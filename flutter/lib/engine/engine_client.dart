@@ -15,10 +15,15 @@ import 'dart:convert';
 import 'dart:io';
 
 class EngineClient {
-  EngineClient({this.python, this.cwd});
+  EngineClient({this.python, this.cwd, this.environment});
 
   final String? python;
   final String? cwd;
+
+  /// Extra environment variables merged over the inherited environment for
+  /// the engine subprocess. Used by tests to isolate the engine's JSON
+  /// stores (COMPRESSTOR_DATA_DIR) and to script a fake engine.
+  final Map<String, String>? environment;
 
   Process? _process;
 
@@ -79,18 +84,31 @@ class EngineClient {
         ['-m', 'app.engine.engine_cli', subcommand],
         workingDirectory: _repoRoot,
         runInShell: false,
+        environment: environment,
       );
     } on ProcessException catch (e) {
       yield {'type': 'error', 'message': 'Cannot start engine: ${e.message}'};
-      yield {'type': exitCode, 'exit': 1};
+      yield {'type': exitEvent, 'exit': 1};
       return;
     }
     _process = process;
 
+    // Send the request, then close stdin. addStream/close return a Future
+    // that errors if the engine exited before reading (broken pipe), so we
+    // catch it instead of leaking an unhandled SocketException — which happens
+    // when the interpreter/cwd is wrong (e.g. an unpackaged .app where the
+    // repo + .venv aren't discoverable). In that case we still drain stdout
+    // below so the caller sees the process end gracefully.
     try {
-      process.stdin.writeln(jsonEncode(request));
-      unawaited(process.stdin.close());
+      final requestBytes = utf8.encode('${jsonEncode(request)}\n');
+      await process.stdin.addStream(Stream.value(requestBytes));
+      await process.stdin.close();
+    } catch (_) {
+      // Engine exited before consuming stdin (missing module / bad
+      // interpreter). Keep going — the stdout stream below ends promptly.
+    }
 
+    try {
       yield* process.stdout
           .transform(utf8.decoder)
           .transform(const LineSplitter())
@@ -109,7 +127,7 @@ class EngineClient {
           });
 
       final exit = await process.exitCode;
-      yield {'type': exitCode, 'exit': exit};
+      yield {'type': exitEvent, 'exit': exit};
     } finally {
       _process = null;
     }

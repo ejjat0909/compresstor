@@ -193,7 +193,7 @@ class _DashboardPageState extends State<DashboardPage> {
               Text('Compress Files', style: theme.typography.pageTitle),
               const SizedBox(height: 2),
               Text(
-                'Reduce PDF and image file sizes — fast, private and fully local.',
+                'Reduce.  PDF and image file sizes — fast, private and fully local.',
                 style: theme.typography.secondary,
               ),
             ],

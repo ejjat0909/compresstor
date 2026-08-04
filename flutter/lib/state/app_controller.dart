@@ -124,6 +124,93 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  Future<void> saveSettings(AppSettings newSettings) async {
+    settings = newSettings;
+    notifyListeners();
+    try {
+      await for (final ev in engine.run(
+        'settings',
+        request: {
+          'action': 'set',
+          'settings': {
+            'theme': newSettings.theme,
+            'accent_color': newSettings.accentColor,
+            'history_limit': newSettings.historyLimit,
+            'default_level': newSettings.defaultLevel,
+            'output_mode': newSettings.outputMode,
+            'output_dir': newSettings.outputDir,
+            'overwrite_confirmation': newSettings.overwriteConfirmation,
+            'add_to_history': newSettings.addToHistory,
+          },
+        },
+      )) {
+        if (ev['type'] == 'settings') {
+          settings = AppSettings.fromJson(
+            ev['settings'] as Map<String, dynamic>,
+          );
+        }
+      }
+    } catch (_) {
+      // Best-effort; local state already updated.
+    }
+    notifyListeners();
+  }
+
+  // -------------------------------------------------------------- history --
+
+  List<Map<String, dynamic>> historyEntries = [];
+  bool isLoadingHistory = false;
+
+  Future<void> loadHistory() async {
+    isLoadingHistory = true;
+    notifyListeners();
+    try {
+      await for (final ev in engine.run(
+        'history',
+        request: {'action': 'list', 'limit': settings.historyLimit},
+      )) {
+        if (ev['type'] == 'history') {
+          historyEntries = List<Map<String, dynamic>>.from(
+            ev['entries'] ?? [],
+          );
+        }
+      }
+    } catch (_) {
+      // Keep whatever we had.
+    } finally {
+      isLoadingHistory = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> removeHistoryEntry({
+    required double timestamp,
+    required String outputPath,
+  }) async {
+    try {
+      await for (final _ in engine.run(
+        'history',
+        request: {
+          'action': 'remove',
+          'timestamp': timestamp,
+          'output_path': outputPath,
+        },
+      )) {}
+    } catch (_) {}
+    await loadHistory();
+  }
+
+  Future<void> clearHistory() async {
+    try {
+      await for (final _ in engine.run(
+        'history',
+        request: {'action': 'clear'},
+      )) {}
+    } catch (_) {}
+    historyEntries = [];
+    notifyListeners();
+  }
+
   // ----------------------------------------------------------- compression --
 
   /// Starts a compression batch for *items* using *options*. The caller should

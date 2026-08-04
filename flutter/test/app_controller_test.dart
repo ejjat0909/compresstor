@@ -258,5 +258,91 @@ void main() {
       expect(c.isLoadingSettings, isFalse);
       expect(c.settings.defaultCompressionLevel, CompressionLevel.maximum);
     });
+
+    test('saveSettings sends settings set to engine', () async {
+      final fake = FakeEngineClient();
+      fake.setScript('settings', const [
+        {
+          'type': 'settings',
+          'settings': {
+            'accent_color': '#e11d48',
+            'history_limit': 100,
+            'default_level': 'high',
+            'output_mode': 'suffix',
+            'output_dir': '',
+            'overwrite_confirmation': false,
+            'add_to_history': true,
+          },
+        },
+      ]);
+      final c = AppController(engine: fake, autoLoadSettings: false);
+      const newSettings = AppSettings(
+        accentColor: '#e11d48',
+        historyLimit: 100,
+        defaultLevel: 'high',
+        overwriteConfirmation: false,
+      );
+      await c.saveSettings(newSettings);
+      expect(fake.calls, contains('settings'));
+      expect(fake.lastRequestMap?['action'], 'set');
+      expect(c.settings.accentColor, '#e11d48');
+      expect(c.settings.historyLimit, 100);
+    });
+  });
+
+  group('history', () {
+    test('loadHistory populates entries', () async {
+      final fake = FakeEngineClient();
+      fake.setScript('history', const [
+        {
+          'type': 'history',
+          'entries': [
+            {
+              'file_name': 'doc.pdf',
+              'kind': 'pdf',
+              'status': 'done',
+              'original_size': 5000,
+              'compressed_size': 2000,
+              'savings_percent': 60.0,
+              'timestamp': 1722700000.0,
+              'output_path': '/tmp/doc_compressed.pdf',
+            },
+          ],
+        },
+      ]);
+      final c = AppController(engine: fake, autoLoadSettings: false);
+      await c.loadHistory();
+      expect(c.isLoadingHistory, isFalse);
+      expect(c.historyEntries.length, 1);
+      expect(c.historyEntries.first['file_name'], 'doc.pdf');
+    });
+
+    test('clearHistory empties entries', () async {
+      final fake = FakeEngineClient();
+      fake.setScript('history', const [
+        {'type': 'ok'},
+      ]);
+      final c = AppController(engine: fake, autoLoadSettings: false);
+      c.historyEntries = [
+        {'file_name': 'a.pdf'},
+      ];
+      await c.clearHistory();
+      expect(c.historyEntries, isEmpty);
+      expect(fake.lastRequestMap?['action'], 'clear');
+    });
+
+    test('removeHistoryEntry calls engine and reloads', () async {
+      final fake = FakeEngineClient();
+      fake.responses['history'] = const [
+        {'type': 'ok'},
+      ];
+      final c = AppController(engine: fake, autoLoadSettings: false);
+      await c.removeHistoryEntry(
+        timestamp: 1722700000.0,
+        outputPath: '/tmp/doc.pdf',
+      );
+      // First call is the remove, second is the reload (loadHistory).
+      expect(fake.calls.where((c) => c == 'history').length, 2);
+    });
   });
 }
