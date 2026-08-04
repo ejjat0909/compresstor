@@ -146,8 +146,17 @@ Architecture notes:
   universal2 engine needs a lipo-merged universal venv — see
   `scripts/merge_universal_venv.sh` and `docs/stack-migration-plan-flutter.md`.
 - The app is NOT sandboxed (the sidecar needs unrestricted file access; v1.0.0
-  shipped the same way) and is ad-hoc signed, so first launch requires
-  right-click → Open (or System Settings → Privacy & Security → Open Anyway).
+  shipped the same way) and is ad-hoc signed, so macOS will show
+  _"Compresstor cannot be opened because Apple cannot check it for
+  malicious software"_ on first launch. To fix this, run in Terminal:
+
+  ```
+  xattr -cr /Applications/Compresstor.app
+  ```
+
+  Then open the app normally. Alternatively: right-click the app → Open →
+  click "Open" in the dialog, or go to System Settings → Privacy & Security →
+  Open Anyway.
 
 ## License
 
