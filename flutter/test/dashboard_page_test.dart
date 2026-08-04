@@ -157,6 +157,13 @@ void main() {
     await tester.pumpWidget(_harness(c));
     await tester.pumpAndSettle();
 
+    // Only ticked files compress — tick both rows first.
+    await tester.tap(find.text('report.pdf'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('photo.png'));
+    await tester.pumpAndSettle();
+    expect(find.text('2 selected'), findsOneWidget);
+
     await tapCompress(tester);
     expect(find.text('Compressing files'), findsOneWidget);
 
@@ -182,6 +189,12 @@ void main() {
     c.addPaths([pdfPath, pngPath]);
 
     await tester.pumpWidget(_harness(c));
+    await tester.pumpAndSettle();
+
+    // Tick both rows so the run has files.
+    await tester.tap(find.text('report.pdf'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('photo.png'));
     await tester.pumpAndSettle();
 
     await tapCompress(tester);
@@ -217,5 +230,37 @@ void main() {
     await tester.pump();
     // no crash, still rendered
     expect(find.text('Compress Files'), findsNWidgets(2));
+  });
+
+  testWidgets('Compress with none ticked shows an error and starts no run', (
+    tester,
+  ) async {
+    final fake = FakeEngineClient();
+    final c = AppController(engine: fake, autoLoadSettings: false);
+    c.addPaths([pdfPath, pngPath]);
+
+    await tester.pumpWidget(_harness(c));
+    await tester.pumpAndSettle();
+
+    // Files are queued but no row is ticked.
+    await tapCompress(tester);
+
+    expect(find.text('No files selected'), findsOneWidget);
+    expect(fake.calls.where((s) => s == 'compress'), isEmpty);
+    expect(c.lastResults, isNull);
+    expect(c.running, isFalse);
+
+    // Only a subset compresses once a single row is ticked (scroll the row
+    // back into view — tapCompress scrolled the CTA into view, hiding the rows).
+    await tester.ensureVisible(find.text('report.pdf'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('report.pdf'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 selected'), findsOneWidget);
+    await tapCompress(tester);
+    expect(fake.calls.where((s) => s == 'compress'), hasLength(1));
+
+    // Flush the toast + fake timers so the test ends cleanly.
+    await drain(tester);
   });
 }

@@ -1,0 +1,2 @@
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/desktop_drop.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/file_selector_macos.framework

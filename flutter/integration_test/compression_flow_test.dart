@@ -128,6 +128,13 @@ doc.close()
     expect(find.text('doc.pdf'), findsOneWidget);
     expect(find.text('photo.jpg'), findsOneWidget);
 
+    // Only ticked files compress — tick both rows.
+    await tester.tap(find.text('doc.pdf'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('photo.jpg'));
+    await tester.pumpAndSettle();
+    expect(find.text('2 selected'), findsOneWidget);
+
     // Start the batch through the UI.
     final cta = find.widgetWithText(AppButton, 'Compress Files');
     expect(cta, findsOneWidget);

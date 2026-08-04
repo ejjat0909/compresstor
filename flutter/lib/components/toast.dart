@@ -67,7 +67,7 @@ class ToastHostState extends State<ToastHost> {
         widget.child,
         Positioned(
           right: 24,
-          bottom: 24,
+          top: 24,
           child: Material(
             type: MaterialType.transparency,
             child: Column(
