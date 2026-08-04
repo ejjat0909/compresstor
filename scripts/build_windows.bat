@@ -39,7 +39,7 @@ echo.
 echo ==^> Stage 1: engine sidecar (PyInstaller)...
 python -m PyInstaller packaging\engine.spec --noconfirm --distpath dist --workpath build
 if errorlevel 1 exit /b 1
-if not exist dist\engine_cli\engine_cli.exe (
+if not exist dist\engine_cli.exe (
   echo Sidecar build failed & exit /b 1
 )
 
@@ -59,7 +59,7 @@ echo.
 echo ==^> Stage 3: bundle engine sidecar...
 if exist "%APP%\engine" rmdir /s /q "%APP%\engine"
 mkdir "%APP%\engine"
-xcopy /e /i /q dist\engine_cli "%APP%\engine" >nul
+copy /y dist\engine_cli.exe "%APP%\engine\engine_cli.exe" >nul
 copy /y version.json "%APP%\version.json" >nul
 
 echo.
