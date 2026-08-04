@@ -91,21 +91,54 @@ Flutter app is built and the sidecar is bundled into the app's Resources
 `EngineClient` auto-detects the bundled engine at runtime and falls back to
 the dev venv in development.
 
-macOS (build on a Mac):
+### Building from a fresh machine
+
+Both build scripts bootstrap everything themselves — clone the repo and run
+the build; no venv setup, no manual pip. Prerequisites on the machine:
+
+| Tool | macOS | Windows |
+| --- | --- | --- |
+| Flutter SDK (stable) + `flutter` on PATH | yes | yes |
+| Xcode + CocoaPods (macOS desktop target) | yes | — |
+| Visual Studio 2022 "Desktop development with C++" (Windows target) | — | yes |
+| Python 3.10+ (`python3`/`python`) | yes | yes |
+| `gh` CLI (publishing only) | optional | optional |
 
 ```bash
-./scripts/build_macos.sh                 # stage 1+2+3: sidecar, app, bundle, sign
-bash scripts/build_dmg.sh                # optional: package the .app into a .dmg
-```
+# macOS (any Mac): creates .venv, installs deps, builds engine + app + zip
+./scripts/build_macos.sh            # add --dmg for the installer
 
-Windows (run on Windows 10/11):
-
-```
+# Windows 10/11: identical — creates .venv, builds everything
 scripts\build_windows.bat
 ```
 
-Artifacts land in `release/MacOS/Compresstor.app` (and `.dmg`) and
-`release/Windows/Compresstor\`.
+Each build emits the auto-update artifacts the in-app updater consumes
+(Settings → About → Check for updates):
+
+```
+release/Compresstor-<version>-macos.zip     # the .app zipped (ditto)
+release/Compresstor-<version>-windows.zip   # the release folder zipped
+release/Compresstor-<version>.sha256        # "sha256  <asset>" lines, one per zip
+```
+
+CI is available too: pushing a `v*` tag (or `workflow_dispatch`) runs
+`.github/workflows/build-{macos,windows}.yml` on GitHub's runners using the
+same scripts, and uploads the zips + checksum as Actions artifacts.
+
+### Releasing a new version
+
+1. **Bump the version** — edit `version.json` at the repo root (the only
+   place): `{ "name": "compresstor", "version": "1.0.1", "build": 2 }`.
+   Build scripts pass it to `flutter build` (Info.plist / Windows product
+   version) and bundle it so the About card reads it at runtime.
+2. **Build** on macOS (`./scripts/build_macos.sh`) and Windows
+   (`scripts\build_windows.bat`) — each produces its zip + the sha256 lines.
+3. **Publish** (one command, needs `gh` CLI):
+   `./scripts/publish_release.sh` — creates GitHub release `v<ver>`, uploads
+   the zips + checksum, marks it latest. Release notes come from
+   `RELEASE_NOTES.md` if present (first line shows in the About card).
+4. Users click **Check for updates** → **Update** to auto-download, verify
+   (SHA-256) and replace the app on macOS and Windows.
 
 Architecture notes:
 - The Flutter `.app` is a universal2 binary (Xcode builds both archs), but the

@@ -19,6 +19,10 @@ Thumbs.db
 /release/MacOS/Compresstor.app/
 /release/Windows/Compresstor/
 
+# Auto-update artifacts (regenerate per build; the .zip is ~50M)
+/release/Compresstor-*.zip
+/release/Compresstor-*.sha256
+
 # QA / local data
 /qa-*.png
 /tmp/

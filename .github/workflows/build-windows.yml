@@ -1,15 +1,16 @@
 name: Build Windows Release
 
+# Builds the Windows release + auto-update artifacts on GitHub's runners
+# (the "build from another PC" path for Windows) by invoking the same
+# script used locally — scripts\build_windows.bat. Publishing stays manual:
+# download the artifacts and run ./scripts/publish_release.sh (or create the
+# GitHub release from the Actions page).
+
 on:
   push:
     tags:
       - "v*"
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version string (e.g. 1.0.0)"
-        required: false
-        default: "1.0.0"
 
 jobs:
   build:
@@ -22,18 +23,19 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
 
-      - name: Build with PyInstaller
-        run: python -m PyInstaller packaging/compresstor.spec --noconfirm
+      - name: Build release (engine + app + auto-update artifacts)
+        shell: cmd
+        run: scripts\build_windows.bat
 
-      - name: Upload artifact
+      - name: Upload updater artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Compresstor-Windows-x64
-          path: dist/Compresstor.exe
+          name: compresstor-windows-update
+          path: |
+            release/Compresstor-*.zip
+            release/Compresstor-*.sha256
           retention-days: 90

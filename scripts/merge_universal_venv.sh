@@ -40,7 +40,7 @@ echo "==> Downloading x86_64 wheels…"
   --abi "cp$PYVER" --abi abi3 \
   --dest "$TMP" PyMuPDF Pillow
 
-echo "==> Lipo-merging per-arch Mach-O files into $VENV…"
+echo "==> Lipo-merging per-arch Mach-O files into ${VENV}…"
 SP=$("$PY" -c "import site; print(site.getsitepackages()[0])")
 MERGED=0
 for wheel in "$TMP"/*.whl; do
