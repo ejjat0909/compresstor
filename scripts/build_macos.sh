@@ -69,6 +69,13 @@ rm -rf release/MacOS/Compresstor.app
 mkdir -p release/MacOS
 cp -R "$APP" release/MacOS/Compresstor.app
 
+echo "==> Update artifact: Compresstor-$VER-macos.zip + sha256…"
+ZIP="release/Compresstor-$VER-macos.zip"
+ditto -c -k --keepParent release/MacOS/Compresstor.app "$ZIP"
+printf '%s  %s\n' "$(shasum -a 256 "$ZIP" | awk '{print $1}')" "$(basename "$ZIP")" \
+  > "release/Compresstor-$VER.sha256"
+ls -lh "$ZIP" "release/Compresstor-$VER.sha256"
+
 echo "==> Cleanup build artifacts…"
 rm -rf build dist
 

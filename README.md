@@ -105,7 +105,29 @@ scripts\build_windows.bat
 ```
 
 Artifacts land in `release/MacOS/Compresstor.app` (and `.dmg`) and
-`release/Windows/Compresstor\`.
+`release/Windows/Compresstor\`. Each build also emits the auto-update
+artifacts the in-app updater consumes (Settings → About → Check for updates):
+
+```
+release/Compresstor-<version>-macos.zip     # the .app zipped (ditto)
+release/Compresstor-<version>-windows.zip   # the release folder zipped
+release/Compresstor-<version>.sha256        # "sha256  <asset>" lines, one per zip
+```
+
+### Releasing a new version
+
+1. **Bump the version** — edit `version.json` at the repo root (the only
+   place): `{ "name": "compresstor", "version": "1.0.1", "build": 2 }`.
+   Build scripts pass it to `flutter build` (Info.plist / Windows product
+   version) and bundle it so the About card reads it at runtime.
+2. **Build** on macOS (`./scripts/build_macos.sh`) and Windows
+   (`scripts\build_windows.bat`) — each produces its zip + the sha256 lines.
+3. **Publish** (one command, needs `gh` CLI):
+   `./scripts/publish_release.sh` — creates GitHub release `v<ver>`, uploads
+   the zips + checksum, marks it latest. Release notes come from
+   `RELEASE_NOTES.md` if present (first line shows in the About card).
+4. Users click **Check for updates** → **Update** to auto-download, verify
+   (SHA-256) and replace the app on macOS and Windows.
 
 Architecture notes:
 - The Flutter `.app` is a universal2 binary (Xcode builds both archs), but the
