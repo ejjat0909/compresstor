@@ -620,12 +620,20 @@ class _DashboardPageState extends State<DashboardPage> {
 
   void _onCompress() {
     final c = _controller;
-    final items = List.of(c.queue);
     final toasts = ToastHost.of(context);
-    if (items.isEmpty) {
+    if (c.queue.isEmpty) {
       toasts.warning('Nothing to compress', 'Add files to the queue first.');
       return;
     }
+    if (_selected.isEmpty) {
+      toasts.danger(
+        'No files selected',
+        'Tick the files you want to compress, then try again.',
+      );
+      return;
+    }
+    // Only the ticked rows take part in the run.
+    final items = [for (final i in _selected) c.queue[i]];
 
     double? maxMb;
     final raw = _maxCtrl.text.trim();
