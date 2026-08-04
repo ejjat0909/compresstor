@@ -10,6 +10,12 @@ animations. The engine (PyMuPDF + Pillow) runs as a bundled sidecar process.
 
 ![stack](https://img.shields.io/badge/Flutter-3.44-blue) ![engine](https://img.shields.io/badge/Python-3.11-green)
 
+## Screenshots
+
+![Compresstor dashboard — drag and drop files, choose a preset or set a max size target, then compress](flutter/assets/images/dashboard.png)
+
+![Compresstor settings — accent colors, defaults and compression preferences](flutter/assets/images/settings.png)
+
 ## Features
 
 - **PDF compression** — re-encodes embedded images (JPEG quality + DPI
