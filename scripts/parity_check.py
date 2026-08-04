@@ -103,7 +103,7 @@ def build_fixtures(dest: Path) -> list[Path]:
 
 
 def old_path_compress(fixture: Path, options: CompressionOptions) -> JobResult:
-    """In-process use case run — the exact path the PySide6 app used."""
+    """In-process use case run — the legacy app's engine path (pre-Flutter)."""
     use_case = CompressUseCase(CompressorRegistry())
     results = use_case.run([FileItem.from_path(str(fixture))], options)
     return results[0]
