@@ -86,6 +86,8 @@ test -x "$APP/Contents/Resources/engine/engine_cli"
 cp version.json "$APP/Contents/Resources/version.json"
 
 echo "==> Re-signing app bundle (ad-hoc, deep)…"
+# Remove quarantine attributes that block "unidentified developer" launch
+xattr -cr "$APP" 2>/dev/null || true
 codesign --force --deep --sign - "$APP" || echo "WARN: codesign --deep failed"
 codesign --verify --deep --strict "$APP" || echo "WARN: codesign --verify reported issues"
 
