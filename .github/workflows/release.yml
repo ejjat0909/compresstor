@@ -18,16 +18,18 @@ jobs:
         with:
           channel: stable
 
+      - name: Install create-dmg
+        run: brew install create-dmg
+
       - name: Build macOS release
-        run: ./scripts/build_macos.sh
+        run: ./scripts/build_macos.sh --dmg
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-release
           path: |
-            release/Compresstor-*-macos.zip
-            release/Compresstor-*.sha256
+            release/MacOS/Compresstor-*.dmg
 
   build-windows:
     runs-on: windows-latest
@@ -52,8 +54,7 @@ jobs:
         with:
           name: windows-release
           path: |
-            release/Compresstor-*-windows.zip
-            release/Compresstor-*.sha256
+            release/Compresstor-*-windows-setup.exe
 
   publish:
     needs: [build-macos, build-windows]
@@ -71,6 +72,5 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            artifacts/Compresstor-*-macos.zip
-            artifacts/Compresstor-*-windows.zip
-            artifacts/Compresstor-*.sha256
+            artifacts/Compresstor-*.dmg
+            artifacts/Compresstor-*-windows-setup.exe

@@ -111,5 +111,5 @@ echo "Artifact: release/MacOS/Compresstor.app"
 
 if [ "$MAKE_DMG" = "1" ]; then
   echo "==> Building DMG…"
-  bash scripts/build_dmg.sh
+  bash scripts/build_dmg.sh "$VER"
 fi
