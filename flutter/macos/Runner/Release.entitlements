@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- NOTE (Phase 6): the App Sandbox is intentionally NOT enabled. The
+	     Python engine sidecar (PyMuPDF/Pillow) must read/write arbitrary
+	     user-selected files (drag-drop paths, typed paths) from a subprocess,
+	     which the sandbox fundamentally blocks; v1.0.0 also shipped
+	     unsandboxed (direct-download distribution, not Mac App Store). -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+</dict>
+</plist>

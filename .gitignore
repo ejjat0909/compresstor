@@ -26,3 +26,12 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+
+# Flutter
+/flutter/.dart_tool/
+/flutter/build/
+/flutter/.flutter-plugins
+/flutter/.flutter-plugins-dependencies
+/flutter/*.iml
+/flutter/macos/Flutter/ephemeral/
+/flutter/windows/flutter/ephemeral/

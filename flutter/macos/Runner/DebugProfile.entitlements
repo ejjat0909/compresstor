@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- NOTE (Phase 5): the App Sandbox is intentionally DISABLED for debug/
+	     profile builds. The Python engine sidecar (PyMuPDF/Pillow) cannot
+	     start inside an app sandbox — its interpreter shell is blocked
+	     ("xcrun: error: cannot be used within an App Sandbox"), which breaks
+	     both `flutter run` and `flutter test integration_test -d macos`.
+	     Release keeps the sandbox; bundling a sandbox-compatible sidecar is a
+	     Phase 6 packaging task. -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
+</dict>
+</plist>
