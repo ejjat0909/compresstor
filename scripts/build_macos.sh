@@ -36,7 +36,7 @@ if [ ! -x "$PY" ]; then
     echo "(https://www.python.org/downloads/ or brew install python@3.12) and retry."
     exit 1
   }
-  echo "==> Bootstrapping .venv with $PY3…"
+  echo "==> Bootstrapping .venv with ${PY3}…"
   "$PY3" -m venv .venv
   .venv/bin/pip install --upgrade pip
   .venv/bin/pip install -r requirements.txt pyinstaller
