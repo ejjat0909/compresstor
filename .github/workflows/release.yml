@@ -30,7 +30,6 @@ jobs:
           name: macos-release
           path: |
             release/MacOS/Compresstor-*.dmg
-            release/Compresstor-*-macos.zip
 
   build-windows:
     runs-on: windows-latest
@@ -56,7 +55,6 @@ jobs:
           name: windows-release
           path: |
             release/Compresstor-*-windows-setup.exe
-            release/Compresstor-*-windows.zip
 
   publish:
     needs: [build-macos, build-windows]
