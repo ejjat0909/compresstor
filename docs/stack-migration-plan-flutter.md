@@ -189,20 +189,39 @@ Phase 5 discoveries (recorded for Phase 6):
   foreground the app; run it from a desktop login, not a headless/SSH shell.
 
 ### Phase 6 — Packaging (1-2 weeks)
-- [ ] Sidecar build: PyInstaller spec for engine only (no Qt! — smaller, no
-      PySide6 in the bundle). macOS universal2: re-apply the lipo-merge +
-      stdlib re-sign gotchas from the old build (docs in repo memory), now for
-      a leaner spec. Windows: engine.exe via build_windows.bat rework.
-- [ ] Flutter build: `flutter 3.44.6 build macos --release` (universal2) and
-      `flutter 3.44.6 build windows`; bundle sidecar into app Resources /
-      `assets/engine/`; app locates engine via `Platform.resolvedExecutable`
-      relative path.
-- [ ] Signing/notarization macOS: ad-hoc or Developer ID, re-sign sidecar after
-      bundling (taskgated rule: never cp -R over an existing bundle — rm first).
-- [ ] Replace build_macos.sh / build_windows.bat with new two-stage scripts
-      (build sidecar, then app, then bundle); keep release/ layout.
-Exit: installable .app and .exe that compress a file without a dev Python
-environment (test on a clean machine / fresh user account).
+- [x] Sidecar build: `packaging/engine.spec` — lean PyInstaller spec, engine
+      only, NO Qt (PyMuPDF/Pillow, numpy excluded). Produces a one-folder
+      `dist/engine_cli/` that runs headless. **arm64 verified.** universal2
+      needs a lipo-merged universal venv (`scripts/merge_universal_venv.sh`,
+      documented below) — not built on this arm64-only machine.
+- [x] Flutter build: `flutter build macos --release` — the `.app` is a
+      universal2 binary (Xcode builds both archs). Sidecar is bundled into
+      `<app>/Contents/Resources/engine/`; `EngineClient` resolves the bundled
+      engine at runtime (`bundledEngineFor`) and falls back to the dev venv in
+      development/`flutter test`.
+- [x] Signing/notarization: ad-hoc deep re-sign of the bundle after bundling
+      (`codesign --force --deep --sign -`); `codesign --verify` clean. First
+      launch needs right-click → Open (same as v1.0.0).
+- [x] Replace `build_macos.sh` / `build_windows.bat` with two-stage scripts
+      (sidecar, then Flutter app, then bundle+sign); keep `release/` layout.
+      macOS fully exercised; `.bat` written but must be run on Windows.
+- [x] Exit criterion met on this machine: `release/MacOS/Compresstor.app`
+      compresses a file through the bundled engine with NO dev Python.
+
+Phase 6 follow-ups (not done here):
+- **universal2 engine** for Intel Macs: the Flutter `.app` is already
+  universal, but the sidecar is host-arch (arm64). Build the engine from a
+  python.org universal2 Python 3.11 venv, lipo-merge the x86_64 PyMuPDF/Pillow
+  wheels into it (`scripts/merge_universal_venv.sh`), then
+  `COMPRESSTOR_ARCH=universal2` PyInstaller. Until then the new app runs on
+  Apple Silicon only; the old universal `release/MacOS/Compresstor-1.0.0.dmg`
+  remains for Intel during the Phase 7 transition.
+- **Windows build** is scripted but unverified (no Windows machine here).
+- **Sandbox**: removed from BOTH DebugProfile and Release entitlements — the
+  sidecar needs unrestricted file access and v1.0.0 shipped unsandboxed. A
+  sandboxed App-Store build would be a separate, larger effort.
+- **Notarization** (Developer ID + notarytool) is left to release time (needs
+  an Apple Developer account / signing identity).
 
 ### Phase 7 — Parallel run, QA & cleanup (1 week)
 - [ ] Ship new app as the default; keep old release/MacOS/Compresstor.app

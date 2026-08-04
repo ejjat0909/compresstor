@@ -14,6 +14,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 class EngineClient {
   EngineClient({this.python, this.cwd, this.environment});
 
@@ -26,6 +28,15 @@ class EngineClient {
   final Map<String, String>? environment;
 
   Process? _process;
+
+  /// Path to a bundled engine sidecar when running inside a packaged app.
+  ///
+  ///   macOS    `<Compresstor.app>/Contents/Resources/engine/engine_cli`
+  ///   Windows  `<exe dir>\engine\engine_cli.exe`
+  ///
+  /// Returns null in development (`flutter run` / `flutter test`), where the
+  /// engine is spawned as `python -m app.engine.engine_cli` from the repo.
+  String? get _bundledEngine => bundledEngineFor(Platform.resolvedExecutable);
 
   static const String exitEvent = '__exit';
   static const int exitCancelled = 2;
@@ -78,11 +89,14 @@ class EngineClient {
     required Map<String, dynamic> request,
   }) async* {
     final Process process;
+    final bundled = _bundledEngine;
     try {
       process = await Process.start(
-        _interpreter,
-        ['-m', 'app.engine.engine_cli', subcommand],
-        workingDirectory: _repoRoot,
+        bundled ?? _interpreter,
+        bundled == null
+            ? ['-m', 'app.engine.engine_cli', subcommand]
+            : [subcommand],
+        workingDirectory: bundled == null ? _repoRoot : null,
         runInShell: false,
         environment: environment,
       );
@@ -145,4 +159,34 @@ class EngineClient {
       p.kill(ProcessSignal.sigterm);
     }
   }
+}
+
+/// Returns the bundled engine sidecar path for a packaged app, or null when
+/// [executable] is not a packaged app (development / tests).
+///
+///   macOS    `<Compresstor.app>/Contents/Resources/engine/engine_cli`
+///   Windows  `<exe dir>\engine\engine_cli.exe` (or `<exe dir>\Resources\engine\`)
+///
+/// Split out from EngineClient so it is unit-testable against a temp layout
+/// without touching the real Platform.resolvedExecutable.
+@visibleForTesting
+String? bundledEngineFor(String executable) {
+  if (executable.isEmpty) return null;
+  if (Platform.isMacOS) {
+    final idx = executable.indexOf('.app/Contents/MacOS');
+    if (idx > 0) {
+      final candidate = '${executable.substring(0, idx)}.app/Contents/'
+          'Resources/engine/engine_cli';
+      if (File(candidate).existsSync()) return candidate;
+    }
+  } else if (Platform.isWindows) {
+    final dir = File(executable).parent.path;
+    for (final c in [
+      '$dir/engine/engine_cli.exe',
+      '$dir/Resources/engine/engine_cli.exe',
+    ]) {
+      if (File(c).existsSync()) return c;
+    }
+  }
+  return null;
 }

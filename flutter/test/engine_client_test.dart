@@ -147,4 +147,40 @@ void main() {
     await done.future.timeout(const Duration(seconds: 15));
     expect(got.last['type'], EngineClient.exitEvent);
   });
+
+  group('bundledEngineFor', () {
+    late Directory bundle;
+
+    setUp(() {
+      bundle = Directory.systemTemp.createTempSync('engine_bundle');
+      // Simulated packaged app layout (only the macOS branch is exercised on
+      // this host; Windows resolves engine_cli.exe next to the exe).
+      File('${bundle.path}/Compresstor.app/Contents/Resources/engine/engine_cli')
+          .createSync(recursive: true);
+    });
+
+    tearDown(() {
+      try {
+        bundle.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    test('resolves engine inside a macOS app bundle', () {
+      final exe = '${bundle.path}/Compresstor.app/Contents/MacOS/compresstor';
+      expect(
+        bundledEngineFor(exe),
+        '${bundle.path}/Compresstor.app/Contents/Resources/engine/engine_cli',
+      );
+    });
+
+    test('returns null when the bundle has no engine sidecar', () {
+      final exe = '${bundle.path}/Bare.app/Contents/MacOS/bare';
+      expect(bundledEngineFor(exe), isNull);
+    });
+
+    test('returns null for a plain executable (development)', () {
+      expect(bundledEngineFor('/usr/local/bin/compresstor'), isNull);
+      expect(bundledEngineFor(''), isNull);
+    });
+  });
 }
