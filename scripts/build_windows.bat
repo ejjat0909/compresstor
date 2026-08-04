@@ -79,6 +79,20 @@ echo %HASH%  Compresstor-%VER%-windows.zip>> release\Compresstor-%VER%.sha256
 rmdir /s /q build dist
 
 echo.
+echo ==^> Stage 5: Inno Setup installer...
+where iscc >nul 2>nul || (
+  echo WARN: Inno Setup not found - skipping installer. Install from https://jrsoftware.org/isdown.php
+  goto :done
+)
+iscc /DMyAppVersion=%VER% packaging\windows\installer.iss
+if errorlevel 1 (
+  echo WARN: Installer build failed
+  goto :done
+)
+echo Installer: release\Compresstor-%VER%-windows-setup.exe
+
+:done
+echo.
 echo Done. Artifact: release\Windows\Compresstor\compresstor.exe
 echo          Engine:  release\Windows\Compresstor\engine\engine_cli.exe
 endlocal
