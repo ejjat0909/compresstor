@@ -942,7 +942,15 @@ class _ProgressRunDialog extends StatelessWidget {
         );
       }
     } else if (failed.isNotEmpty) {
-      bodyText = '${failed.length} file(s) could not be compressed.';
+      // Surface the actual error text so users see WHY compression failed
+      // (e.g. "Cannot compress to 1.00 MB or below…"). Keep a plain count
+      // when many files failed with heterogeneous errors.
+      final errs = failed.map((r) => r.error).where((e) => e.isNotEmpty).toSet();
+      if (errs.length == 1) {
+        bodyText = errs.first;
+      } else {
+        bodyText = '${failed.length} file(s) could not be compressed.';
+      }
     } else if (skipped.isNotEmpty) {
       bodyText = '${skipped.length} file(s) were already optimized.';
     } else if (error != null) {
