@@ -1,12 +1,14 @@
 name: Release
 
 # Push a v* tag → builds macOS + Windows → creates a GitHub Release with
-# both platform zips + checksums attached. One tag push = done.
+# installers (DMG + setup.exe) for users and update zips + checksums for
+# the in-app auto-updater. One tag push = done.
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 jobs:
   build-macos:
@@ -30,6 +32,8 @@ jobs:
           name: macos-release
           path: |
             release/MacOS/Compresstor-*.dmg
+            release/Compresstor-*-macos.zip
+            release/Compresstor-*.sha256
 
   build-windows:
     runs-on: windows-latest
@@ -68,6 +72,8 @@ jobs:
           name: windows-release
           path: |
             release/Compresstor-*-windows-setup.exe
+            release/Compresstor-*-windows.zip
+            release/Compresstor-*.sha256
 
   publish:
     needs: [build-macos, build-windows]
@@ -80,6 +86,9 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Merge checksums
+        run: cat artifacts/Compresstor-*.sha256 | sort -u > artifacts/checksums.sha256
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -87,3 +96,6 @@ jobs:
           files: |
             artifacts/Compresstor-*.dmg
             artifacts/Compresstor-*-windows-setup.exe
+            artifacts/Compresstor-*-macos.zip
+            artifacts/Compresstor-*-windows.zip
+            artifacts/checksums.sha256
