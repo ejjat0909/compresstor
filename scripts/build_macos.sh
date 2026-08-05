@@ -93,6 +93,10 @@ cp -R dist/engine_cli/. "$APP/Contents/Resources/engine/"
 test -x "$APP/Contents/Resources/engine/engine_cli"
 cp version.json "$APP/Contents/Resources/version.json"
 
+echo "==> Bundling updater script into Resources/app/updater/…"
+mkdir -p "$APP/Contents/Resources/app/updater"
+cp app/updater/apply_update.py "$APP/Contents/Resources/app/updater/"
+
 echo "==> Re-signing app bundle (ad-hoc, deep)…"
 # Remove quarantine attributes that block "unidentified developer" launch
 xattr -cr "$APP" 2>/dev/null || true

@@ -63,6 +63,11 @@ copy /y dist\engine_cli.exe "%APP%\engine\engine_cli.exe" >nul
 copy /y version.json "%APP%\version.json" >nul
 
 echo.
+echo ==^> Bundling updater script...
+if not exist "%APP%\app\updater" mkdir "%APP%\app\updater"
+copy /y app\updater\apply_update.py "%APP%\app\updater\apply_update.py" >nul
+
+echo.
 echo ==^> Installing to release\Windows\Compresstor\...
 if exist release\Windows\Compresstor rmdir /s /q release\Windows\Compresstor
 mkdir release\Windows

@@ -1,10 +1,8 @@
-// macOS update applier: extract the downloaded zip, swap the running
-// Compresstor.app for the new one (rm first — never copy over a live bundle,
-// taskgated kills the merged bundle), strip quarantine, relaunch, exit.
+// macOS update applier: launches the Python apply_update.py script detached,
+// then exits. The script waits for this process to die, swaps the .app bundle,
+// strips quarantine, and relaunches.
 
 import 'dart:io';
-
-import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'update_applier.dart';
 import 'update_client.dart' show UpdateFetchException;
@@ -16,103 +14,54 @@ class MacOsUpdateApplier implements UpdateApplier {
     return exe.parent.parent.parent; // Contents/MacOS -> Contents -> .app
   }
 
+  /// Resolve the bundled Python updater script path.
+  /// In dev mode it's at app/updater/apply_update.py relative to the project.
+  /// In release builds it's bundled inside the .app at
+  /// Contents/Resources/app/updater/apply_update.py (via Flutter assets or
+  /// the build script copying it).
+  static File _updaterScript() {
+    final bundle = currentAppBundle();
+    // Release: bundled inside app
+    final bundled =
+        File('${bundle.path}/Contents/Resources/app/updater/apply_update.py');
+    if (bundled.existsSync()) return bundled;
+
+    // Dev: look relative to the executable (project root)
+    final exe = File(Platform.resolvedExecutable);
+    // In dev, exe is inside build/macos/Build/Products/Debug/... or Release/...
+    // Walk up to find app/updater/apply_update.py
+    var dir = exe.parent;
+    for (var i = 0; i < 10; i++) {
+      final candidate = File('${dir.path}/app/updater/apply_update.py');
+      if (candidate.existsSync()) return candidate;
+      dir = dir.parent;
+    }
+
+    throw UpdateFetchException(
+        'Cannot find apply_update.py updater script.');
+  }
+
   @override
   Future<void> apply(File zip) async {
-    final current = currentAppBundle();
-    await swapBundle(zip, current);
+    final bundle = currentAppBundle();
+    final script = _updaterScript();
+    final exeName = Platform.resolvedExecutable.split('/').last;
 
-    // Hand off to the new instance; this process exits so the swap is final.
-    final binary = '${current.path}/Contents/MacOS/'
-        '${Platform.resolvedExecutable.split('/').last}';
-    if (!File(binary).existsSync()) {
-      throw UpdateFetchException('New app binary not found at $binary.');
-    }
-    await Process.start(binary, []);
-    if (zip.existsSync()) zip.deleteSync();
+    // Launch the Python updater detached
+    await Process.start(
+      'python3',
+      [
+        script.path,
+        '--platform', 'macos',
+        '--zip', zip.path,
+        '--target', bundle.path,
+        '--pid', '$pid',
+        '--exe-name', exeName,
+      ],
+      mode: ProcessStartMode.detached,
+    );
+
+    // Exit so the script can replace the bundle
     exit(0);
-  }
-
-  /// Returns true if the bundle path requires admin privileges to modify.
-  bool _needsElevation(Directory bundle) {
-    // If the app is in /Applications or another system-protected path,
-    // we need admin privileges. Test by attempting to create a temp file.
-    final testFile = File('${bundle.parent.path}/.compresstor-write-test');
-    try {
-      testFile.writeAsStringSync('');
-      testFile.deleteSync();
-      return false;
-    } on FileSystemException {
-      return true;
-    }
-  }
-
-  /// Runs a shell command elevated via osascript (prompts for admin password).
-  Future<void> _runElevated(String script) async {
-    final result = await Process.run('osascript', [
-      '-e',
-      'do shell script "$script" with administrator privileges',
-    ]);
-    if (result.exitCode != 0) {
-      final stderr = result.stderr.toString().trim();
-      throw UpdateFetchException(
-          'Elevated command failed (exit ${result.exitCode}): $stderr');
-    }
-  }
-
-  /// Extracts [zip]'s `Compresstor.app`, strips quarantine, and swaps it for
-  /// the running [currentBundle] — rm the live bundle first (taskgated rule,
-  /// never copy over a live bundle), then mv the new one in.
-  @visibleForTesting
-  Future<Directory> swapBundle(File zip, Directory currentBundle) async {
-    final installTemp =
-        Directory.systemTemp.createTempSync('compresstor-install-');
-    try {
-      // 1. Strip quarantine from the downloaded zip.
-      await runUpdateProcess(
-          'xattr', ['-d', 'com.apple.quarantine', zip.path]).catchError((_) {});
-
-      // 2. Extract the zip (built-in ditto keeps permissions/symlinks).
-      try {
-        await runUpdateProcess(
-            '/usr/bin/ditto', ['-x', '-k', zip.path, installTemp.path]);
-      } on UpdateFetchException catch (e) {
-        if (e.message.contains('exit -9') || e.message.contains('exit 137')) {
-          await Future<void>.delayed(const Duration(seconds: 2));
-          await runUpdateProcess(
-              '/usr/bin/ditto', ['-x', '-k', zip.path, installTemp.path]);
-        } else {
-          rethrow;
-        }
-      }
-      final newApp = Directory('${installTemp.path}/Compresstor.app');
-      if (!newApp.existsSync()) {
-        throw UpdateFetchException(
-            'Update package has no Compresstor.app inside.');
-      }
-
-      // 3. Strip quarantine from the extracted bundle.
-      await runUpdateProcess(
-          'xattr', ['-dr', 'com.apple.quarantine', newApp.path]);
-
-      // 4. Swap: rm the live bundle first, then move.
-      //    If in /Applications (or other protected path), elevate with admin.
-      if (_needsElevation(currentBundle)) {
-        final bundlePath = currentBundle.path;
-        final newAppPath = newApp.path;
-        await _runElevated(
-          'rm -rf \'$bundlePath\' && mv \'$newAppPath\' \'$bundlePath\'',
-        );
-      } else {
-        if (currentBundle.existsSync()) {
-          await runUpdateProcess('rm', ['-rf', currentBundle.path]);
-        }
-        await runUpdateProcess('mv', [newApp.path, currentBundle.path]);
-      }
-      return currentBundle;
-    } finally {
-      if (installTemp.existsSync()) {
-        installTemp.deleteSync(recursive: true);
-      }
-    }
   }
 }

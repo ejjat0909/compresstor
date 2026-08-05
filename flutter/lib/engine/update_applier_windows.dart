@@ -1,29 +1,50 @@
-// Windows update applier: extract the downloaded zip to a temp dir, drop a
-// detached apply_update.bat in that temp dir (it must survive the install-dir
-// swap), launch it minimized and exit — the bat waits for compresstor.exe to
-// stop, deletes the install dir, copies the new build in and relaunches.
-//
-// The bat lives in the EXTRACT dir (%~dp0 = extract dir), NOT the install dir,
-// because the install dir is removed while it runs. User data (%APPDATA%) is
-// outside the install dir and never touched.
+// Windows update applier: launches the Python apply_update.py script detached,
+// then exits. The script waits for this process to die, replaces the install
+// directory contents, and relaunches compresstor.exe.
 
 import 'dart:io';
-
-import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import 'update_applier.dart';
 import 'update_client.dart' show UpdateFetchException;
 
 class WindowsUpdateApplier implements UpdateApplier {
   /// The install directory containing compresstor.exe.
-  static Directory currentInstallDir() => File(Platform.resolvedExecutable).parent;
+  static Directory currentInstallDir() =>
+      File(Platform.resolvedExecutable).parent;
+
+  /// Resolve the bundled Python updater script path.
+  static File _updaterScript() {
+    final installDir = currentInstallDir();
+
+    // Release: bundled next to the exe under data/app/updater/
+    final bundled =
+        File('${installDir.path}\\data\\app\\updater\\apply_update.py');
+    if (bundled.existsSync()) return bundled;
+
+    // Alt release location: directly in install dir
+    final alt = File('${installDir.path}\\app\\updater\\apply_update.py');
+    if (alt.existsSync()) return alt;
+
+    // Dev: walk up from exe to find project root
+    var dir = installDir;
+    for (var i = 0; i < 10; i++) {
+      final candidate = File('${dir.path}\\app\\updater\\apply_update.py');
+      if (candidate.existsSync()) return candidate;
+      dir = dir.parent;
+    }
+
+    throw UpdateFetchException(
+        'Cannot find apply_update.py updater script.');
+  }
 
   @override
   Future<void> apply(File zip) async {
-    final exeDir = currentInstallDir();
+    final installDir = currentInstallDir();
+    final script = _updaterScript();
+    final exeName = Platform.resolvedExecutable.split('\\').last;
 
-    // 1. Writable pre-check: Program Files installs need elevation.
-    final probe = File('${exeDir.path}\\.compresstor-update-probe');
+    // Writable pre-check
+    final probe = File('${installDir.path}\\.compresstor-update-probe');
     try {
       probe.writeAsStringSync('x');
       probe.deleteSync();
@@ -32,50 +53,21 @@ class WindowsUpdateApplier implements UpdateApplier {
           'Update failed — run Compresstor as administrator to update.');
     }
 
-    // 2. Extract the zip next to the bat that applies it.
-    final installTemp =
-        Directory.systemTemp.createTempSync('compresstor-install-');
-    try {
-      await runUpdateProcess('tar', ['-xf', zip.path, '-C', installTemp.path]);
+    // Launch the Python updater detached
+    await Process.start(
+      'python',
+      [
+        script.path,
+        '--platform', 'windows',
+        '--zip', zip.path,
+        '--target', installDir.path,
+        '--pid', '$pid',
+        '--exe-name', exeName,
+      ],
+      mode: ProcessStartMode.detached,
+    );
 
-      // 3. Write the detached updater bat into the extract dir.
-      final bat = File('${installTemp.path}\\apply_update.bat');
-      bat.writeAsStringSync(batScript(exeDir.path));
-      if (!File('${installTemp.path}\\compresstor.exe').existsSync()) {
-        throw UpdateFetchException(
-            'Update package has no compresstor.exe inside.');
-      }
-
-      // 4. Launch it minimized, detached; this process exits below.
-      await Process.run(
-          'cmd', ['/c', 'start', '', '/min', bat.path],
-          workingDirectory: installTemp.path);
-    } finally {
-      if (zip.existsSync()) zip.deleteSync();
-    }
-    exit(0); // the bat waits for this process to end, then swaps
-  }
-
-  /// Builds the detached swap script (waits for the exe to exit, rmdir the
-  /// install dir, xcopy the new build in, relaunch, self-delete). Kept a pure
-  /// function so a test can assert the exact commands without running cmd.
-  @visibleForTesting
-  String batScript(String exeDir) {
-    return '''
-@echo off
-setlocal
-set "EXEDIR=$exeDir"
-set "SRC=%~dp0"
-:wait
-tasklist /fi "IMAGENAME eq compresstor.exe" | find /i "compresstor.exe" >nul
-if not errorlevel 1 (
-  timeout /t 1 /nobreak >nul
-  goto wait
-)
-rmdir /s /q "%EXEDIR%"
-xcopy /e /i /q "%SRC%*" "%EXEDIR%\\" >nul
-start "" "%EXEDIR%\\compresstor.exe"
-del "%~f0"
-''';
+    // Exit so the script can replace the directory
+    exit(0);
   }
 }
