@@ -194,10 +194,13 @@ def apply_windows(zip_path: Path, target: Path, exe_name: str) -> Path:
 
 
 def relaunch(binary: Path) -> None:
-    """Start the new binary detached."""
+    """Start the new app detached."""
     if platform.system() == "Darwin":
+        # Use 'open' to launch the .app bundle properly (WindowServer context).
+        # binary is <target>/Contents/MacOS/<exe>, so .app is 3 levels up.
+        app_bundle = binary.parent.parent.parent
         subprocess.Popen(
-            [str(binary)],
+            ["open", "-a", str(app_bundle)],
             start_new_session=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
