@@ -25,7 +25,7 @@ class AppSidebar extends StatelessWidget {
   });
 
   static const List<SidebarItem> defaultItems = [
-    SidebarItem(id: 'dashboard', label: 'Dashboard', icon: 'gauge'),
+    SidebarItem(id: 'dashboard', label: 'Compress Files', icon: 'gauge'),
     SidebarItem(id: 'history', label: 'History', icon: 'history'),
     SidebarItem(id: 'settings', label: 'Settings', icon: 'settings'),
   ];
@@ -203,13 +203,16 @@ class _NavItemState extends State<_NavItem> {
             children: [
               AppIcon(widget.item.icon, size: 16, color: fg),
               const SizedBox(width: 10),
-              Text(
-                widget.item.label,
-                style: theme.typography.body.copyWith(
-                  color: fg,
-                  fontWeight: widget.selected
-                      ? FontWeight.w600
-                      : FontWeight.w500,
+              Expanded(
+                child: Text(
+                  widget.item.label,
+                  style: theme.typography.body.copyWith(
+                    color: fg,
+                    fontWeight: widget.selected
+                        ? FontWeight.w600
+                        : FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

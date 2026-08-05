@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../engine/update_applier.dart';
 import '../engine/update_client.dart';
@@ -53,12 +54,21 @@ class UpdateController extends ChangeNotifier {
       _status == UpdateStatus.downloading ||
       _status == UpdateStatus.applying;
 
-  /// Reads the version bundled with the app (assets/version.json, synced by
-  /// the build scripts from the repo-root version.json).
+  /// Reads the version from the app's package info (sourced from pubspec.yaml
+  /// version field at build time). Falls back to assets/version.json if
+  /// package_info_plus fails.
   static Future<String> loadBundledVersion({
     String asset = 'assets/version.json',
     String fallback = '0.0.0-dev',
   }) async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (info.version.isNotEmpty && info.version != '0.0.0') {
+        return info.version;
+      }
+    } catch (_) {
+      // fall through to asset fallback
+    }
     try {
       final data = await rootBundle.loadString(asset);
       final v = (jsonDecode(data) as Map<String, dynamic>)['version'];

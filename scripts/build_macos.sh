@@ -53,6 +53,14 @@ VER=$("$PY" -c "import json;print(json.load(open('version.json'))['version'])")
 BUILD=$("$PY" -c "import json;print(json.load(open('version.json'))['build'])")
 echo "==> Version from version.json: $VER (build $BUILD)"
 cp version.json flutter/assets/version.json  # keep the bundled asset in sync
+# Sync pubspec.yaml version from version.json (single source of truth).
+"$PY" -c "
+import re, json
+v = json.load(open('version.json'))
+spec = open('flutter/pubspec.yaml').read()
+spec = re.sub(r'^version:.*$', f\"version: {v['version']}+{v['build']}\", spec, flags=re.M)
+open('flutter/pubspec.yaml', 'w').write(spec)
+"
 
 MAKE_DMG=0
 ARCH="${COMPRESSTOR_ARCH:-arm64}"

@@ -28,7 +28,7 @@ class _AppShellState extends State<AppShell> {
   bool _scrollToUpdate = false;
 
   static const _titles = {
-    'dashboard': 'Dashboard',
+    'dashboard': 'Compress Files',
     'history': 'History',
     'settings': 'Settings',
   };
@@ -45,7 +45,7 @@ class _AppShellState extends State<AppShell> {
     );
     _updateController.addListener(_onUpdateChanged);
     _updateController.loadVersion().then((_) {
-      _updateController.checkForUpdates();
+      _updateController.checkForUpdates().catchError((_) {});
     });
   }
 
