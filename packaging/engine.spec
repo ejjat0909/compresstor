@@ -101,7 +101,7 @@ else:
         strip=False,
         upx=False,
         console=True,
-        icon=None,
+        icon=str(ROOT / 'assets' / 'icon' / 'Compresstor.ico'),
         version=None,
     )
     coll = None

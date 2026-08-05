@@ -45,8 +45,21 @@ jobs:
         with:
           channel: stable
 
+      - name: Decode signing certificate
+        if: env.SIGN_CERT != ''
+        shell: cmd
+        env:
+          SIGN_CERT: ${{ secrets.WIN_SIGN_CERT }}
+        run: |
+          echo %SIGN_CERT% > cert_b64.txt
+          certutil -decode cert_b64.txt cert.pfx
+          del cert_b64.txt
+
       - name: Build Windows release
         shell: cmd
+        env:
+          SIGN_PFX: ${{ secrets.WIN_SIGN_CERT != '' && 'cert.pfx' || '' }}
+          SIGN_PWD: ${{ secrets.WIN_SIGN_PWD }}
         run: scripts\build_windows.bat
 
       - name: Upload Windows artifacts

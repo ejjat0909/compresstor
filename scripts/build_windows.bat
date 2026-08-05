@@ -91,6 +91,17 @@ if errorlevel 1 (
 )
 echo Installer: release\Compresstor-%VER%-windows-setup.exe
 
+REM Sign the installer if a code signing certificate is available.
+REM Set SIGN_PFX=path\to\cert.pfx and SIGN_PWD=password to enable.
+if defined SIGN_PFX (
+  echo.
+  echo ==^> Signing installer with code signing certificate...
+  signtool sign /f "%SIGN_PFX%" /p "%SIGN_PWD%" /tr http://timestamp.digicert.com /td sha256 /fd sha256 "release\Compresstor-%VER%-windows-setup.exe"
+  if errorlevel 1 echo WARN: Signing failed
+) else (
+  echo NOTE: Installer is unsigned. Set SIGN_PFX and SIGN_PWD to sign.
+)
+
 :done
 echo.
 echo Done. Artifact: release\Windows\Compresstor\compresstor.exe
