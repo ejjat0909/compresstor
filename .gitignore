@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 build/
 dist/
+/crash_report/
 *.egg-info/
 
 # OS
