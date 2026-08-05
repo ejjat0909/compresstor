@@ -1,8 +1,4 @@
 // Sidebar — vertical navigation. Mirrors app/presentation/widgets/sidebar.py.
-//
-// Compresstor's sidebar has Dashboard / History / Settings. The PySide6 app
-// keeps Settings out of the sidebar (it's a route on the top-right), but the
-// migration plan asks for all three, so we include Settings here.
 
 import 'package:flutter/material.dart';
 
@@ -23,6 +19,9 @@ class AppSidebar extends StatelessWidget {
     required this.items,
     required this.current,
     required this.onSelected,
+    this.updateAvailable = false,
+    this.updateVersion,
+    this.onUpdateTap,
   });
 
   static const List<SidebarItem> defaultItems = [
@@ -34,6 +33,9 @@ class AppSidebar extends StatelessWidget {
   final List<SidebarItem> items;
   final String current;
   final ValueChanged<String> onSelected;
+  final bool updateAvailable;
+  final String? updateVersion;
+  final VoidCallback? onUpdateTap;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +74,83 @@ class AppSidebar extends StatelessWidget {
               selected: item.id == current,
               onTap: () => onSelected(item.id),
             ),
+          const Spacer(),
+          if (updateAvailable) _UpdateBanner(
+            version: updateVersion,
+            onTap: onUpdateTap,
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _UpdateBanner extends StatefulWidget {
+  const _UpdateBanner({this.version, this.onTap});
+  final String? version;
+  final VoidCallback? onTap;
+
+  @override
+  State<_UpdateBanner> createState() => _UpdateBannerState();
+}
+
+class _UpdateBannerState extends State<_UpdateBanner> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppTheme.of(context);
+    final palette = theme.palette;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: _hover
+                ? palette.accent.withValues(alpha: 0.15)
+                : palette.accent.withValues(alpha: 0.08),
+            borderRadius: AppRadius.mdAll,
+            border: Border.all(
+              color: palette.accent.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              AppIcon('download', size: 16, color: palette.accent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Update available',
+                      style: theme.typography.body.copyWith(
+                        color: palette.accent,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    if (widget.version != null)
+                      Text(
+                        'v${widget.version}',
+                        style: theme.typography.caption.copyWith(
+                          color: palette.accent.withValues(alpha: 0.7),
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              AppIcon('chevron-right', size: 14, color: palette.accent),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -35,11 +35,22 @@ const _accentPresets = <(String, String)>[
 ];
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, this.updateController});
+  const SettingsPage({
+    super.key,
+    this.updateController,
+    this.scrollToUpdate = false,
+    this.onScrollHandled,
+  });
 
   /// Injectable for tests; when null the page owns a real controller
   /// (GitHub Releases transport + the platform applier).
   final UpdateController? updateController;
+
+  /// When true, auto-scroll to the update section on build.
+  final bool scrollToUpdate;
+
+  /// Called after the scroll-to-update has been handled.
+  final VoidCallback? onScrollHandled;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -48,6 +59,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final _historyCtl = TextEditingController();
   final _suffixCtl = TextEditingController(text: '_compressed');
+  final _scrollController = ScrollController();
   final _folderCtl = TextEditingController();
 
   String _accentColor = '#3b82f6';
@@ -119,6 +131,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _historyCtl.dispose();
     _suffixCtl.dispose();
     _folderCtl.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -163,7 +176,19 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final theme = AppTheme.of(context);
 
+    if (widget.scrollToUpdate) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+        );
+        widget.onScrollHandled?.call();
+      });
+    }
+
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.only(left: 28, right: 28, top: 22, bottom: 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -4,9 +4,14 @@ import 'package:flutter/material.dart';
 
 import '../components/button.dart';
 import '../components/toast.dart';
+import '../engine/update_applier.dart';
+import '../engine/update_applier_macos.dart';
+import '../engine/update_applier_windows.dart';
+import '../engine/update_client.dart';
 import '../pages/dashboard_page.dart';
 import '../pages/history_page.dart';
 import '../pages/settings_page.dart';
+import '../state/update_controller.dart';
 import '../theme/app_theme.dart';
 import 'sidebar.dart';
 
@@ -19,6 +24,8 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   String _current = 'dashboard';
+  late final UpdateController _updateController;
+  bool _scrollToUpdate = false;
 
   static const _titles = {
     'dashboard': 'Dashboard',
@@ -26,12 +33,52 @@ class _AppShellState extends State<AppShell> {
     'settings': 'Settings',
   };
 
+  @override
+  void initState() {
+    super.initState();
+    final isWindows = UpdateClient.defaultUpdatePlatform() == 'windows';
+    final UpdateApplier applier =
+        isWindows ? WindowsUpdateApplier() : MacOsUpdateApplier();
+    _updateController = UpdateController(
+      client: UpdateClient(),
+      applier: applier,
+    );
+    _updateController.addListener(_onUpdateChanged);
+    _updateController.loadVersion().then((_) {
+      _updateController.checkForUpdates();
+    });
+  }
+
+  @override
+  void dispose() {
+    _updateController.removeListener(_onUpdateChanged);
+    _updateController.dispose();
+    super.dispose();
+  }
+
+  void _onUpdateChanged() {
+    setState(() {});
+  }
+
+  void _goToUpdateSettings() {
+    setState(() {
+      _current = 'settings';
+      _scrollToUpdate = true;
+    });
+  }
+
   Widget _pageFor(String id) {
     switch (id) {
       case 'history':
         return const HistoryPage();
       case 'settings':
-        return const SettingsPage();
+        return SettingsPage(
+          updateController: _updateController,
+          scrollToUpdate: _scrollToUpdate,
+          onScrollHandled: () {
+            _scrollToUpdate = false;
+          },
+        );
       default:
         return const DashboardPage();
     }
@@ -41,6 +88,8 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final theme = AppTheme.of(context);
     final palette = theme.palette;
+    final hasUpdate =
+        _updateController.status == UpdateStatus.updateAvailable;
     return ToastHost(
       child: Scaffold(
         backgroundColor: palette.bg,
@@ -50,6 +99,9 @@ class _AppShellState extends State<AppShell> {
               items: AppSidebar.defaultItems,
               current: _current,
               onSelected: (id) => setState(() => _current = id),
+              updateAvailable: hasUpdate,
+              updateVersion: _updateController.manifest?.version.toString(),
+              onUpdateTap: _goToUpdateSettings,
             ),
             Expanded(
               child: Column(
