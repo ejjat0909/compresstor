@@ -236,14 +236,32 @@ class UpdateClient {
   }
 
   /// Downloads [url] to [target], reporting 0.0–1.0 progress. Deletes any
-  /// partial file on failure.
+  /// partial file on failure. Follows HTTP redirects (GitHub assets return 302).
   Future<void> download(
     Uri url,
     File target, {
     void Function(double progress)? onProgress,
   }) async {
-    final req = http.Request('GET', url);
-    final streamed = await _http.send(req);
+    // Follow redirects manually for streamed requests (dart:http doesn't auto-follow).
+    var currentUrl = url;
+    late http.StreamedResponse streamed;
+    for (var i = 0; i < 5; i++) {
+      final req = http.Request('GET', currentUrl);
+      req.followRedirects = false;
+      streamed = await _http.send(req);
+      if (streamed.statusCode == 301 ||
+          streamed.statusCode == 302 ||
+          streamed.statusCode == 307 ||
+          streamed.statusCode == 308) {
+        final location = streamed.headers['location'];
+        if (location == null) break;
+        currentUrl = Uri.parse(location);
+        // Drain the redirect response body
+        await streamed.stream.drain<void>();
+        continue;
+      }
+      break;
+    }
     if (streamed.statusCode != 200) {
       throw UpdateFetchException(
           'Download failed (HTTP ${streamed.statusCode}).');
