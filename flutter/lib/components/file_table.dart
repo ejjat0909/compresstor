@@ -177,8 +177,17 @@ class _AppFileTableState extends State<AppFileTable> {
             ? null
             : (d) => _showContextMenu(theme, palette, row, d.globalPosition),
         child: Container(
-          color: selected ? palette.accentSoft.withValues(alpha: 0.6) : null,
-          padding: const EdgeInsets.only(left: 4, right: 8, top: 4, bottom: 4),
+          padding: const EdgeInsets.only(
+            left: 10,
+            right: 10,
+            top: 4,
+            bottom: 4,
+          ),
+          decoration: BoxDecoration(
+            color: selected ? palette.accentSoft.withValues(alpha: 0.1) : null,
+            borderRadius: AppRadius.mdAll,
+          ),
+
           child: Row(
             children: [
               Checkbox(
