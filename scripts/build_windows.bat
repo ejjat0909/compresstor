@@ -73,8 +73,8 @@ echo ==^> Update artifact: Compresstor-%VER%-windows.zip + sha256...
 set "ZIP=release\Compresstor-%VER%-windows.zip"
 if exist "%ZIP%" del "%ZIP%"
 powershell -NoProfile -Command "Compress-Archive -Path '%APP%\*' -DestinationPath '%ZIP%' -Force"
-for /f "delims=" %%h in ('certutil -hashfile "%ZIP%" SHA256 ^| findstr /r "^[0-9a-fA-F]"') do set HASH=%%h
-echo %HASH%  Compresstor-%VER%-windows.zip>> release\Compresstor-%VER%.sha256
+for /f "delims=" %%h in ('powershell -NoProfile -Command "(Get-FileHash '%ZIP%' -Algorithm SHA256).Hash.ToLower()"') do set HASH=%%h
+echo %HASH%  Compresstor-%VER%-windows.zip> release\Compresstor-%VER%-windows.sha256
 
 rmdir /s /q build dist
 

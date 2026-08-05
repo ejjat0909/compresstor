@@ -33,7 +33,7 @@ jobs:
           path: |
             release/MacOS/Compresstor-*.dmg
             release/Compresstor-*-macos.zip
-            release/Compresstor-*.sha256
+            release/Compresstor-*-macos.sha256
 
   build-windows:
     runs-on: windows-latest
@@ -73,7 +73,7 @@ jobs:
           path: |
             release/Compresstor-*-windows-setup.exe
             release/Compresstor-*-windows.zip
-            release/Compresstor-*.sha256
+            release/Compresstor-*-windows.sha256
 
   publish:
     needs: [build-macos, build-windows]
