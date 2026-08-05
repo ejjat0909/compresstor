@@ -32,6 +32,7 @@ jobs:
           name: macos-release
           path: |
             release/Compresstor-*.dmg
+            release/Compresstor-*.pkg
             release/Compresstor-*-macos.zip
             release/Compresstor-*-macos.sha256
 
@@ -95,6 +96,7 @@ jobs:
           generate_release_notes: true
           files: |
             artifacts/Compresstor-*.dmg
+            artifacts/Compresstor-*.pkg
             artifacts/Compresstor-*-windows-setup.exe
             artifacts/Compresstor-*-macos.zip
             artifacts/Compresstor-*-windows.zip

@@ -128,4 +128,7 @@ if [ "$MAKE_DMG" = "1" ]; then
   bash scripts/build_dmg.sh "$VER"
   # Copy DMG to release/ root for flat artifact upload
   cp "release/MacOS/Compresstor-$VER.dmg" "release/Compresstor-$VER.dmg"
+
+  echo "==> Building .pkg installer…"
+  bash scripts/build_pkg.sh "$VER"
 fi
