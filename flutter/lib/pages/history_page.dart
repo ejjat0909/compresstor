@@ -57,7 +57,11 @@ class _HistoryPageState extends State<HistoryPage> {
     final d = _done;
     if (d.isEmpty) return 0;
     return d.fold(0.0, (s, e) {
-      final pct = (e['savings_percent'] as num?)?.toDouble() ?? 0;
+      final orig = (e['original_size'] as num?)?.toInt() ?? 0;
+      final comp = (e['compressed_size'] as num?)?.toInt() ?? 0;
+      final pct = orig > 0
+          ? ((orig - comp).clamp(0, orig) / orig * 100)
+          : 0.0;
       return s + pct;
     }) / d.length;
   }
@@ -238,7 +242,9 @@ class _HistoryPageState extends State<HistoryPage> {
     final kind = entry['kind'] as String? ?? '';
     final origSize = (entry['original_size'] as num?)?.toInt() ?? 0;
     final compSize = (entry['compressed_size'] as num?)?.toInt() ?? 0;
-    final pct = (entry['savings_percent'] as num?)?.toDouble() ?? 0;
+    final pct = origSize > 0
+        ? ((origSize - compSize).clamp(0, origSize) / origSize * 100)
+        : 0.0;
     final status = entry['status'] as String? ?? '';
     final ts = (entry['timestamp'] as num?)?.toDouble() ?? 0;
     final outputPath = entry['output_path'] as String? ?? '';

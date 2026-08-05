@@ -968,23 +968,7 @@ class _ProgressRunDialog extends StatelessWidget {
         if (bodyText != null) Text(bodyText, style: theme.typography.body),
         if (error != null) ...[
           const SizedBox(height: 8),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: error));
-                ToastHost.of(dialogContext).success('Copied', 'Error copied to clipboard.');
-              },
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AppIcon('copy', size: 14, color: palette.accent),
-                  const SizedBox(width: 6),
-                  Text('Copy error', style: theme.typography.secondary.copyWith(color: palette.accent)),
-                ],
-              ),
-            ),
-          ),
+          _CopyErrorButton(error: error, palette: palette, theme: theme, dialogContext: dialogContext),
         ],
         if (badges.isNotEmpty) ...[
           const SizedBox(height: 10),
@@ -1002,6 +986,61 @@ class _ProgressRunDialog extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _CopyErrorButton extends StatefulWidget {
+  const _CopyErrorButton({
+    required this.error,
+    required this.palette,
+    required this.theme,
+    required this.dialogContext,
+  });
+
+  final String error;
+  final AppPalette palette;
+  final AppTheme theme;
+  final BuildContext dialogContext;
+
+  @override
+  State<_CopyErrorButton> createState() => _CopyErrorButtonState();
+}
+
+class _CopyErrorButtonState extends State<_CopyErrorButton> {
+  bool _copied = false;
+
+  void _onCopy() {
+    Clipboard.setData(ClipboardData(text: widget.error));
+    setState(() => _copied = true);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: _copied ? null : _onCopy,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _copied
+                  ? AppIcon('check', size: 14, color: widget.palette.accent, key: const ValueKey('check'))
+                  : AppIcon('copy', size: 14, color: widget.palette.accent, key: const ValueKey('copy')),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _copied ? 'Copied!' : 'Copy error',
+              style: widget.theme.typography.secondary.copyWith(color: widget.palette.accent),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

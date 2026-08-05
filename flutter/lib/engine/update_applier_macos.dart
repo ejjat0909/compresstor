@@ -47,18 +47,32 @@ class MacOsUpdateApplier implements UpdateApplier {
           'xattr', ['-d', 'com.apple.quarantine', zip.path]).catchError((_) {});
 
       // 2. Extract the zip (built-in ditto keeps permissions/symlinks).
-      await runUpdateProcess('ditto', ['-x', '-k', zip.path, installTemp.path]);
+      //    Retry once on SIGKILL (-9) — macOS occasionally kills ditto under
+      //    memory pressure or transient security policy enforcement.
+      try {
+        await runUpdateProcess(
+            '/usr/bin/ditto', ['-x', '-k', zip.path, installTemp.path]);
+      } on UpdateFetchException catch (e) {
+        if (e.message.contains('exit -9') || e.message.contains('exit 137')) {
+          // Wait briefly and retry once.
+          await Future<void>.delayed(const Duration(seconds: 2));
+          await runUpdateProcess(
+              '/usr/bin/ditto', ['-x', '-k', zip.path, installTemp.path]);
+        } else {
+          rethrow;
+        }
+      }
       final newApp = Directory('${installTemp.path}/Compresstor.app');
       if (!newApp.existsSync()) {
         throw UpdateFetchException(
             'Update package has no Compresstor.app inside.');
       }
 
-      // 2. Downloaded bundles may carry a quarantine attribute.
+      // 3. Strip quarantine from the extracted bundle.
       await runUpdateProcess(
           'xattr', ['-dr', 'com.apple.quarantine', newApp.path]);
 
-      // 3. Swap: rm the live bundle first (taskgated rule), then move.
+      // 4. Swap: rm the live bundle first (taskgated rule), then move.
       if (currentBundle.existsSync()) {
         await runUpdateProcess('rm', ['-rf', currentBundle.path]);
       }

@@ -96,9 +96,27 @@ class _Toast {
   final ToastTone tone;
 }
 
-class _ToastCard extends StatelessWidget {
+class _ToastCard extends StatefulWidget {
   const _ToastCard({required this.toast});
   final _Toast toast;
+
+  @override
+  State<_ToastCard> createState() => _ToastCardState();
+}
+
+class _ToastCardState extends State<_ToastCard> {
+  bool _copied = false;
+
+  void _onCopy() {
+    final text = widget.toast.message != null
+        ? '${widget.toast.title}\n${widget.toast.message}'
+        : widget.toast.title;
+    Clipboard.setData(ClipboardData(text: text));
+    setState(() => _copied = true);
+    Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +124,7 @@ class _ToastCard extends StatelessWidget {
     final AppPalette palette = theme.palette;
     final (accent, icon) = _toneAssets(palette);
     return Container(
-      key: toast.id,
+      key: widget.toast.id,
       margin: const EdgeInsets.only(top: 8),
       constraints: const BoxConstraints(maxWidth: 360, minWidth: 240),
       decoration: BoxDecoration(
@@ -140,13 +158,13 @@ class _ToastCard extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            toast.title,
+                            widget.toast.title,
                             style: theme.typography.bodyStrong,
                           ),
-                          if (toast.message != null) ...[
+                          if (widget.toast.message != null) ...[
                             const SizedBox(height: 2),
                             Text(
-                              toast.message!,
+                              widget.toast.message!,
                               style: theme.typography.secondary,
                             ),
                           ],
@@ -157,13 +175,13 @@ class _ToastCard extends StatelessWidget {
                     MouseRegion(
                       cursor: SystemMouseCursors.click,
                       child: GestureDetector(
-                        onTap: () {
-                          final text = toast.message != null
-                              ? '${toast.title}\n${toast.message}'
-                              : toast.title;
-                          Clipboard.setData(ClipboardData(text: text));
-                        },
-                        child: AppIcon('copy', size: 14, color: palette.textMuted),
+                        onTap: _copied ? null : _onCopy,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: _copied
+                              ? AppIcon('check', size: 14, color: palette.accent, key: const ValueKey('check'))
+                              : AppIcon('copy', size: 14, color: palette.accent, key: const ValueKey('copy')),
+                        ),
                       ),
                     ),
                   ],
@@ -178,7 +196,7 @@ class _ToastCard extends StatelessWidget {
   }
 
   (Color, String) _toneAssets(AppPalette p) {
-    switch (toast.tone) {
+    switch (widget.toast.tone) {
       case ToastTone.info:
         return (p.info, 'info');
       case ToastTone.success:
