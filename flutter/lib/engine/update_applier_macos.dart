@@ -42,7 +42,11 @@ class MacOsUpdateApplier implements UpdateApplier {
     final installTemp =
         Directory.systemTemp.createTempSync('compresstor-install-');
     try {
-      // 1. Extract the zip (built-in ditto keeps permissions/symlinks).
+      // 1. Strip quarantine from the downloaded zip (browsers/NSURLSession add it).
+      await runUpdateProcess(
+          'xattr', ['-d', 'com.apple.quarantine', zip.path]).catchError((_) {});
+
+      // 2. Extract the zip (built-in ditto keeps permissions/symlinks).
       await runUpdateProcess('ditto', ['-x', '-k', zip.path, installTemp.path]);
       final newApp = Directory('${installTemp.path}/Compresstor.app');
       if (!newApp.existsSync()) {
