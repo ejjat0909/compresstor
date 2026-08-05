@@ -34,6 +34,11 @@ log "rendering DMG background"
 rm -f "$FINAL"
 
 log "building DMG with create-dmg"
+
+# Copy installer script next to the app for inclusion in DMG
+cp "$ROOT/scripts/Install Compresstor.command" "$ROOT/release/MacOS/Install Compresstor.command"
+chmod +x "$ROOT/release/MacOS/Install Compresstor.command"
+
 create-dmg \
   --volname "Compresstor $VERSION" \
   --background "$BG" \
@@ -44,8 +49,11 @@ create-dmg \
   --app-drop-link 480 200 \
   --no-internet-enable \
   --hide-extension "Compresstor.app" \
+  --add-file "Install Compresstor.command" "$ROOT/release/MacOS/Install Compresstor.command" 330 340 \
   "$FINAL" \
   "$APP"
+
+rm -f "$ROOT/release/MacOS/Install Compresstor.command"
 
 SIZE="$(du -h "$FINAL" | awk '{print $1}')"
 log "done: $FINAL ($SIZE)"
