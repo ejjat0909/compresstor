@@ -36,6 +36,7 @@ dependencies:
   desktop_drop: ^0.7.1
   http: ^1.2.0
   crypto: ^3.0.3
+  window_manager: ^0.4.3
 
 dev_dependencies:
   flutter_test:

@@ -5,6 +5,7 @@
 // Listens to settings changes so the accent color updates live.
 
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'shell/app_shell.dart';
 import 'state/app_controller.dart';
@@ -13,7 +14,20 @@ import 'theme/app_theme.dart';
 import 'theme/palette.dart';
 import 'theme/typography.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+
+  const windowOptions = WindowOptions(
+    minimumSize: Size(900, 600),
+    titleBarStyle: TitleBarStyle.hidden,
+  );
+  await windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.setFullScreen(true);
+    await windowManager.show();
+    await windowManager.focus();
+  });
+
   runApp(CompresstorApp(controller: AppController()));
 }
 

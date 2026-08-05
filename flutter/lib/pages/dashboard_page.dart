@@ -966,6 +966,26 @@ class _ProgressRunDialog extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         if (bodyText != null) Text(bodyText, style: theme.typography.body),
+        if (error != null) ...[
+          const SizedBox(height: 8),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: error));
+                ToastHost.of(dialogContext).success('Copied', 'Error copied to clipboard.');
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AppIcon('copy', size: 14, color: palette.accent),
+                  const SizedBox(width: 6),
+                  Text('Copy error', style: theme.typography.secondary.copyWith(color: palette.accent)),
+                ],
+              ),
+            ),
+          ),
+        ],
         if (badges.isNotEmpty) ...[
           const SizedBox(height: 10),
           Wrap(spacing: 8, runSpacing: 8, children: badges),

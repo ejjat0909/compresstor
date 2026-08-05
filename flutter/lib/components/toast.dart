@@ -6,6 +6,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/icons.dart';
@@ -150,6 +151,19 @@ class _ToastCard extends StatelessWidget {
                             ),
                           ],
                         ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () {
+                          final text = toast.message != null
+                              ? '${toast.title}\n${toast.message}'
+                              : toast.title;
+                          Clipboard.setData(ClipboardData(text: text));
+                        },
+                        child: AppIcon('copy', size: 14, color: palette.textMuted),
                       ),
                     ),
                   ],
