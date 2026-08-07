@@ -1,6 +1,8 @@
 ; Inno Setup script for Compresstor Windows installer
 ; Built by CI: scripts\build_windows.bat produces the app folder,
 ; then this script packages it into a single Setup exe.
+; The setup.exe is code-signed AFTER this script runs (see
+; build_windows.bat Stage 6 + docs\windows-code-signing.md).
 
 #define MyAppName "Compresstor"
 #define MyAppPublisher "ejjat0909"

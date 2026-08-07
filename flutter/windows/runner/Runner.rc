@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.ejjat0909" "\0"
-            VALUE "FileDescription", "compresstor" "\0"
+            VALUE "CompanyName", "ejjat0909" "\0"
+            VALUE "FileDescription", "Compresstor" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "compresstor" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.ejjat0909. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 ejjat0909. All rights reserved." "\0"
             VALUE "OriginalFilename", "compresstor.exe" "\0"
-            VALUE "ProductName", "compresstor" "\0"
+            VALUE "ProductName", "Compresstor" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

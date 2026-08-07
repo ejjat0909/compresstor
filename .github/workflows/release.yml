@@ -51,7 +51,7 @@ jobs:
           channel: stable
 
       - name: Decode signing certificate
-        if: env.SIGN_CERT != ''
+        if: secrets.WIN_SIGN_CERT != ''
         shell: cmd
         env:
           SIGN_CERT: ${{ secrets.WIN_SIGN_CERT }}

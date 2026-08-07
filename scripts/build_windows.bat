@@ -4,7 +4,9 @@ REM
 REM   Stage 1  engine sidecar : PyInstaller packaging\engine.spec -> dist\engine_cli\
 REM   Stage 2  Flutter app    : flutter build windows --release
 REM   Stage 3  bundle         : copy sidecar into <exe dir>\engine\engine_cli.exe
-REM             and install to release\Windows\Compresstor\
+REM   Stage 4  code signing   : sign every bundled EXE (SIGN_PFX/SIGN_PWD)
+REM   Stage 5  install        : copy app tree to release\Windows\Compresstor\
+REM   Stage 6  installer      : Inno Setup setup.exe (signed + verified)
 REM
 REM Run from the repo root on Windows 10/11:  scripts\build_windows.bat
 REM
@@ -68,6 +70,38 @@ if not exist "%APP%\app\updater" mkdir "%APP%\app\updater"
 copy /y app\updater\apply_update.py "%APP%\app\updater\apply_update.py" >nul
 
 echo.
+echo ==^> Stage 4: code signing (SmartScreen "Unknown publisher" fix)...
+if defined SIGN_PFX (
+  where signtool >nul 2>nul || (
+    echo ERROR: SIGN_PFX is set but signtool was not found on PATH.
+    echo Install the Windows SDK (Windows 10 SDK component) or put signtool on PATH.
+    exit /b 1
+  )
+  if not exist "%SIGN_PFX%" (
+    echo ERROR: SIGN_PFX points to a missing file: %SIGN_PFX%
+    exit /b 1
+  )
+  REM Sign every bundled EXE (app, engine sidecar, any helper) BEFORE the
+  REM installer is built - SmartScreen checks the installed exes too, not
+  REM just the setup.exe. /tr + /td sha256 = RFC 3161 timestamped
+  REM signature, so the cert can expire without invalidating the build.
+  for /r "%APP%" %%f in (*.exe) do (
+    echo Signing: %%f
+    signtool sign /f "%SIGN_PFX%" /p "%SIGN_PWD%" ^
+      /tr http://timestamp.digicert.com /td sha256 /fd sha256 "%%f"
+    if errorlevel 1 (
+      echo ERROR: signtool failed on %%f
+      exit /b 1
+    )
+  )
+  echo All bundled EXEs signed.
+) else (
+  echo WARN: SIGN_PFX not set - build will be UNSIGNED and Windows will
+  echo show "Unknown publisher" in SmartScreen. See
+  echo docs\windows-code-signing.md to fix.
+)
+
+echo.
 echo ==^> Installing to release\Windows\Compresstor\...
 if exist release\Windows\Compresstor rmdir /s /q release\Windows\Compresstor
 mkdir release\Windows
@@ -84,7 +118,7 @@ echo %HASH%  Compresstor-%VER%-windows.zip> release\Compresstor-%VER%-windows.sh
 rmdir /s /q build dist
 
 echo.
-echo ==^> Stage 5: Inno Setup installer...
+echo ==^> Stage 6: Inno Setup installer...
 where iscc >nul 2>nul || (
   echo WARN: Inno Setup not found - skipping installer. Install from https://jrsoftware.org/isdown.php
   goto :done
@@ -102,7 +136,11 @@ if defined SIGN_PFX (
   echo.
   echo ==^> Signing installer with code signing certificate...
   signtool sign /f "%SIGN_PFX%" /p "%SIGN_PWD%" /tr http://timestamp.digicert.com /td sha256 /fd sha256 "release\Compresstor-%VER%-windows-setup.exe"
-  if errorlevel 1 echo WARN: Signing failed
+  if errorlevel 1 (
+    echo ERROR: installer signing failed
+    exit /b 1
+  )
+  signtool verify /pa /v "release\Compresstor-%VER%-windows-setup.exe" >nul 2>nul && echo OK: installer signature verified || echo WARN: could not verify installer signature
 ) else (
   echo NOTE: Installer is unsigned. Set SIGN_PFX and SIGN_PWD to sign.
 )
