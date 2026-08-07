@@ -71,7 +71,10 @@ copy /y app\updater\apply_update.py "%APP%\app\updater\apply_update.py" >nul
 
 echo.
 echo ==^> Stage 4: code signing (SmartScreen "Unknown publisher" fix)...
-if defined SIGN_PFX (
+REM Note: the workflow sets SIGN_PFX to an EMPTY string when no cert is
+REM configured. "if defined X" is true for an empty-but-set var, so check
+REM for non-empty explicitly (or the empty cert path would hard-fail).
+if not "%SIGN_PFX%"=="" (
   where signtool >nul 2>nul || (
     echo ERROR: SIGN_PFX is set but signtool was not found on PATH.
     echo Install the Windows SDK (Windows 10 SDK component) or put signtool on PATH.
@@ -132,7 +135,7 @@ echo Installer: release\Compresstor-%VER%-windows-setup.exe
 
 REM Sign the installer if a code signing certificate is available.
 REM Set SIGN_PFX=path\to\cert.pfx and SIGN_PWD=password to enable.
-if defined SIGN_PFX (
+if not "%SIGN_PFX%"=="" (
   echo.
   echo ==^> Signing installer with code signing certificate...
   signtool sign /f "%SIGN_PFX%" /p "%SIGN_PWD%" /tr http://timestamp.digicert.com /td sha256 /fd sha256 "release\Compresstor-%VER%-windows-setup.exe"
