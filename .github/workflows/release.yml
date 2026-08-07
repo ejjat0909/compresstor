@@ -38,6 +38,10 @@ jobs:
 
   build-windows:
     runs-on: windows-latest
+    # secrets can't be referenced directly in `if:` conditionals — evaluate
+    # the check into an env var, then gate steps on it.
+    env:
+      HAS_SIGN_CERT: ${{ secrets.WIN_SIGN_CERT != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -51,7 +55,7 @@ jobs:
           channel: stable
 
       - name: Decode signing certificate
-        if: secrets.WIN_SIGN_CERT != ''
+        if: env.HAS_SIGN_CERT == 'true'
         shell: cmd
         env:
           SIGN_CERT: ${{ secrets.WIN_SIGN_CERT }}
@@ -63,7 +67,7 @@ jobs:
       - name: Build Windows release
         shell: cmd
         env:
-          SIGN_PFX: ${{ secrets.WIN_SIGN_CERT != '' && 'cert.pfx' || '' }}
+          SIGN_PFX: ${{ env.HAS_SIGN_CERT == 'true' && 'cert.pfx' || '' }}
           SIGN_PWD: ${{ secrets.WIN_SIGN_PWD }}
         run: scripts\build_windows.bat
 
