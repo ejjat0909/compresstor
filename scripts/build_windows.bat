@@ -71,38 +71,40 @@ copy /y app\updater\apply_update.py "%APP%\app\updater\apply_update.py" >nul
 
 echo.
 echo ==^> Stage 4: code signing (SmartScreen "Unknown publisher" fix)...
-REM Note: the workflow sets SIGN_PFX to an EMPTY string when no cert is
-REM configured. "if defined X" is true for an empty-but-set var, so check
-REM for non-empty explicitly (or the empty cert path would hard-fail).
-if not "%SIGN_PFX%"=="" (
-  where signtool >nul 2>nul || (
-    echo ERROR: SIGN_PFX is set but signtool was not found on PATH.
-    echo Install the Windows SDK (Windows 10 SDK component) or put signtool on PATH.
-    exit /b 1
-  )
-  if not exist "%SIGN_PFX%" (
-    echo ERROR: SIGN_PFX points to a missing file: %SIGN_PFX%
-    exit /b 1
-  )
-  REM Sign every bundled EXE (app, engine sidecar, any helper) BEFORE the
-  REM installer is built - SmartScreen checks the installed exes too, not
-  REM just the setup.exe. /tr + /td sha256 = RFC 3161 timestamped
-  REM signature, so the cert can expire without invalidating the build.
-  for /r "%APP%" %%f in (*.exe) do (
-    echo Signing: %%f
-    signtool sign /f "%SIGN_PFX%" /p "%SIGN_PWD%" ^
-      /tr http://timestamp.digicert.com /td sha256 /fd sha256 "%%f"
-    if errorlevel 1 (
-      echo ERROR: signtool failed on %%f
-      exit /b 1
-    )
-  )
-  echo All bundled EXEs signed.
-) else (
-  echo WARN: SIGN_PFX not set - build will be UNSIGNED and Windows will
-  echo show "Unknown publisher" in SmartScreen. See
-  echo docs\windows-code-signing.md to fix.
+REM The workflow passes SIGN_PFX as an EMPTY string when no cert is
+REM configured, and cmd's "if defined X" is TRUE for an empty-but-set
+REM variable - so compare for non-empty explicitly. goto-based flow
+REM avoids cmd's fragile nested-block parsing (caret line-continuation
+REM inside a parenthesized block fails with "X was unexpected at this
+REM time").
+if "%SIGN_PFX%"=="" goto sign_skip
+where signtool >nul 2>nul
+if errorlevel 1 goto sign_no_tool
+if not exist "%SIGN_PFX%" goto sign_no_file
+REM Sign every bundled EXE (app, engine sidecar, any helper) BEFORE the
+REM installer is built - SmartScreen checks the installed exes too, not
+REM just the setup.exe. /tr + /td sha256 = RFC 3161 timestamped
+REM signature, so the cert can expire without invalidating the build.
+for /r "%APP%" %%f in (*.exe) do (
+  echo Signing: %%f
+  signtool sign /f "%SIGN_PFX%" /p "%SIGN_PWD%" /tr http://timestamp.digicert.com /td sha256 /fd sha256 "%%f"
+  if errorlevel 1 exit /b 1
 )
+echo All bundled EXEs signed.
+goto sign_done
+:sign_no_tool
+echo ERROR: SIGN_PFX is set but signtool was not found on PATH.
+echo Install the Windows SDK (Windows 10 SDK component) or put signtool on PATH.
+exit /b 1
+:sign_no_file
+echo ERROR: SIGN_PFX points to a missing file: %SIGN_PFX%
+exit /b 1
+:sign_skip
+echo WARN: SIGN_PFX not set - build will be UNSIGNED and Windows will
+echo show "Unknown publisher" in SmartScreen. See
+echo docs\windows-code-signing.md to fix.
+:sign_done
+echo.
 
 echo.
 echo ==^> Installing to release\Windows\Compresstor\...
