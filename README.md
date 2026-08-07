@@ -112,6 +112,12 @@ the build; no venv setup, no manual pip. Prerequisites on the machine:
 scripts\build_windows.bat
 ```
 
+Windows releases are **unsigned by default** — SmartScreen shows
+"Unknown publisher" until a code-signing certificate is configured. See
+[`docs/windows-code-signing.md`](docs/windows-code-signing.md) for the
+certificate options and how to wire `SIGN_PFX`/`SIGN_PWD` (or Azure Trusted
+Signing) into the build and CI.
+
 Each build emits the auto-update artifacts the in-app updater consumes
 (Settings → About → Check for updates):
 

@@ -38,5 +38,6 @@ Thumbs.db
 /flutter/.flutter-plugins
 /flutter/.flutter-plugins-dependencies
 /flutter/*.iml
+/flutter/test/failures/
 /flutter/macos/Flutter/ephemeral/
 /flutter/windows/flutter/ephemeral/
